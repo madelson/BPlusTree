@@ -67,6 +67,7 @@ namespace BPlusTree.Tests
         public BPlusTreeImmutableList<T> Insert(int index, T item)
         {
             int count = this._count;
+            // todo if index == count route through Add(item)
             if ((uint)index > (uint)count) { ThrowHelper.ThrowArgumentOutOfRange(); }
 
             (Node updated, Node? split) = this._root.Insert(index, item);
@@ -85,13 +86,30 @@ namespace BPlusTree.Tests
             return new(root, count + 1);
         }
 
+        // todo implement Add(). This is another flavor of insert optimized for adding at the
+        // end. A difference is that splits with Add() are heavily left-weighted, leaving a full
+        // left node and a right node of size 1. This is much more efficient if we are consecutively adding
+        // since most nodes will be full instead of most being half-full. Add can also avoid walking the
+        // cumulative counts list since we know we're always following the right branch, and it can
+        // maybe extend leaf nodes more efficiently.
+
         public BPlusTreeImmutableList<T> AddRange(IEnumerable<T> items)
         {
             if (items is null) { ThrowHelper.ThrowArgumentNull(nameof(items)); }
 
-            if (items is BPlusTreeImmutableList<T> immutableList)
+            var immutableList = items as BPlusTreeImmutableList<T>;
+            if (immutableList is not null)
             {
-                return AddRange(immutableList);
+                if (this.Count == 0) { return immutableList; }
+                if (immutableList.Count == 0) { return this; }
+
+                // todo we can further optimize this case by recursing through
+                // immutableList instead of iterating over it. When we land on a leaf:
+                // if itemQueue is empty, just add the leaf unchanged to the leaf nodeQueue
+                // if itemQueue.Count + leaf.Count <= NodeSize, merge the two leaves and add it to the leaf nodeQueue
+                // else create two leaves that are at least half full and add them to the leaf node queue
+                // With this approach, we can re-use most of the leaf nodes from the appended tree without even iterating
+                // over their items.
             }
 
             using var enumerator = items.GetEnumerator();
@@ -105,7 +123,7 @@ namespace BPlusTree.Tests
             {
                 nodeQueues.PeekTail().EnqueueTail(_root);
             }
-            
+
             do
             {
                 if (itemQueue.Count == NodeSize - 1)
@@ -187,8 +205,10 @@ namespace BPlusTree.Tests
                         }
                         result = true;
                     }
-
-                    result = false;
+                    else
+                    {
+                        result = false;
+                    }
                 }
 
                 nodeQueues.EnqueueTail(new());
@@ -237,16 +257,7 @@ namespace BPlusTree.Tests
             }
         }
 
-        // todo just add all leaf nodes to leaf level queue, go from there
-        private BPlusTreeImmutableList<T> AddRange(BPlusTreeImmutableList<T> other)
-        {
-            if (this.Count == 0) { return other; }
-            if (other.Count == 0) { return this; }
-
-            throw new NotImplementedException();
-        }
-
-        // todo use strong enuemrator instead
+        // todo use strong enumerator instead
         // todo use stack-based implementation
         public IEnumerator<T> GetEnumerator()
         {

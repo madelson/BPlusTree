@@ -57,11 +57,34 @@ namespace BPlusTree.Tests
         }
 
         [Test]
-        public void TestCreateRange([Values(5, 10, 20, 40, 80, 10000)] int count)
+        public void TestCreateRange([Values(1, 5, 10, 20, 40, 80, 10000)] int count)
         {
             string[] values = Enumerable.Range(0, count).Select(i => i.ToString()).ToArray();
             BPlusTreeImmutableList<string> list = BPlusTreeImmutableList.CreateRange(values);
             CollectionAssert.AreEqual(values, list);
+        }
+
+        [Test]
+        public void TestAddRangeWithEmptyList()
+        {
+            BPlusTreeImmutableList<bool?> empty = BPlusTreeImmutableList<bool?>.Empty;
+            Assert.AreSame(empty, empty.AddRange(Enumerable.Empty<bool?>()));
+
+            BPlusTreeImmutableList<bool?> list = BPlusTreeImmutableList.CreateRange(new bool?[] { null, false, true });
+            Assert.AreSame(list, list.AddRange(empty));
+            Assert.AreSame(list, empty.AddRange(list));
+        }
+
+        [Test, Combinatorial]
+        public void TestAddRange(
+            [Values(1, 7, 49, 123, 10000)] int startCount,
+            [Values(1, 7, 49, 123, 10000)] int addCount)
+        {
+            string[] startingValues = Enumerable.Range(0, startCount).Select(i => $"s{i}").ToArray();
+            string[] addedValues = Enumerable.Range(0, startCount).Select(i => $"a{i}").ToArray();
+            BPlusTreeImmutableList<string> list = BPlusTreeImmutableList.CreateRange(startingValues);
+            list = list.AddRange(addedValues);
+            CollectionAssert.AreEqual(startingValues.Concat(addedValues), list);
         }
     }
 }
