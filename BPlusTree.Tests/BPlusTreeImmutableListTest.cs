@@ -81,7 +81,7 @@ namespace BPlusTree.Tests
             [Values(1, 7, 49, 123, 10000)] int addCount)
         {
             string[] startingValues = Enumerable.Range(0, startCount).Select(i => $"s{i}").ToArray();
-            string[] addedValues = Enumerable.Range(0, startCount).Select(i => $"a{i}").ToArray();
+            string[] addedValues = Enumerable.Range(0, addCount).Select(i => $"a{i}").ToArray();
             BPlusTreeImmutableList<string> list = BPlusTreeImmutableList.CreateRange(startingValues);
             list = list.AddRange(addedValues);
             CollectionAssert.AreEqual(startingValues.Concat(addedValues), list);
