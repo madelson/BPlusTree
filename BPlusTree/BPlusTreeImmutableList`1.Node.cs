@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BPlusTree.Tests
+namespace BPlusTree
 {
     public partial class BPlusTreeImmutableList<T>
     {

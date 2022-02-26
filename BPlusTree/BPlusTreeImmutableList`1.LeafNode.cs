@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BPlusTree.Tests
+namespace BPlusTree
 {
     using static Storage;
 
