@@ -10,7 +10,9 @@ namespace BPlusTree.Tests
     {
         internal abstract class Node
         {
-            internal abstract (Node Updated, Node? Split, int UpdatedCount) Insert(T item, int index, int count);
+            internal abstract int Count { get; }
+
+            internal abstract (Node Updated, Node? Split) Insert(int index, T item);
         }
     }
 }

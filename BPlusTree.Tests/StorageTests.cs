@@ -1,11 +1,13 @@
 using System.Runtime.InteropServices;
-using Xunit;
+using NUnit.Framework;
 
 namespace BPlusTree.Tests
 {
+    using static Storage;
+
     public class StorageTests
     {
-        [Fact]
+        [Test]
         public void TestStorage7()
         {
             var storage7 = default(Storage7<WeirdLayout>);
@@ -14,15 +16,13 @@ namespace BPlusTree.Tests
             storage7.Item5.Int16 = -1;
             storage7.Item7.String = "abc";
 
-            var span = Storage.CreateSpan(ref storage7);
-            Assert.Equal(7, span.Length);
-            Assert.Equal(this, span[1].Object);
-            Assert.Equal(12, span[2].Byte);
-            Assert.Equal(-1, span[4].Int16);
-            Assert.Equal("abc", span[6].String);
+            Assert.AreEqual(this, Get(ref storage7, 1).Object);
+            Assert.AreEqual(12, Get(ref storage7, 2).Byte);
+            Assert.AreEqual(-1, Get(ref storage7, 4).Int16);
+            Assert.AreEqual("abc", Get(ref storage7, 6).String);
         }
 
-        [Fact]
+        [Test]
         public void TestStorage8()
         {
             var storage8 = default(Storage8<WeirdLayout>);
@@ -31,12 +31,10 @@ namespace BPlusTree.Tests
             storage8.Items1To7.Item7.Int16 = short.MaxValue;
             storage8.Item8.String = "end";
 
-            var span = Storage.CreateSpan(ref storage8);
-            Assert.Equal(8, span.Length);
-            Assert.Equal("test", span[0].Object);
-            Assert.Equal(byte.MaxValue, span[5].Byte);
-            Assert.Equal(short.MaxValue, span[6].Int16);
-            Assert.Equal("end", span[7].String);
+            Assert.AreEqual("test", Get(ref storage8, 0).Object);
+            Assert.AreEqual(byte.MaxValue, Get(ref storage8, 5).Byte);
+            Assert.AreEqual(short.MaxValue, Get(ref storage8, 6).Int16);
+            Assert.AreEqual("end", Get(ref storage8, 7).String);
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]

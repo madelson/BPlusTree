@@ -12,7 +12,9 @@ namespace BPlusTree.Tests
     internal static class Storage
     {
         public const int NodeSize = 8;
-        public const int SplitNodeSize = NodeSize / 2;
+        public const int RightSplitNodeSize = (NodeSize + 1) / 2;
+        public const int LeftSplitNodeSize = NodeSize + 1 - RightSplitNodeSize;
+        public const int MinimumNodeFill = NodeSize / 4;
 
         public static ref T Get<T>(ref Storage8<T> storage, int index)
         {
@@ -27,31 +29,6 @@ namespace BPlusTree.Tests
 
             return ref Unsafe.Add(ref Unsafe.As<Storage7<T>, T>(ref storage), index);
         }
-
-        public static unsafe Span<T> CreateSpan<T>(ref Storage7<T> storage) =>
-            CreateSpan<Storage7<T>, T>(ref storage, 7);
-
-        public static unsafe Span<T> CreateSpan<T>(ref Storage7<T> storage, int length)
-        {
-            Debug.Assert(length <= 7);
-            return CreateSpan<Storage7<T>, T>(ref storage, length);
-        }
-
-        public static unsafe Span<T> CreateSpan<T>(ref Storage8<T> storage) =>
-            CreateSpan<Storage8<T>, T>(ref storage, 8);
-
-        public static unsafe Span<T> CreateSpan<T>(ref Storage8<T> storage, int length)
-        {
-            Debug.Assert(length <= 8);
-            return CreateSpan<Storage8<T>, T>(ref storage, length);
-        }
-
-        private static unsafe Span<TElement> CreateSpan<TRef, TElement>(ref TRef storage, int length) =>
-#if NET6_0_OR_GREATER
-            MemoryMarshal.CreateSpan(ref Unsafe.As<TRef, TElement>(ref storage), length);
-#else
-            new(Unsafe.AsPointer(ref storage), 7);
-#endif
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

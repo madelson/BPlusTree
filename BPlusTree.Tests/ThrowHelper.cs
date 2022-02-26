@@ -12,5 +12,9 @@ namespace BPlusTree.Tests
         [DoesNotReturn]
         public static void ThrowArgumentOutOfRange() =>
             throw new ArgumentOutOfRangeException("index", "Index was out of range. Must be non-negative and less than the size of the collection.");
+
+        [DoesNotReturn]
+        public static void ThrowArgumentNull(string parameterName) =>
+            throw new ArgumentNullException(parameterName);
     }
 }
