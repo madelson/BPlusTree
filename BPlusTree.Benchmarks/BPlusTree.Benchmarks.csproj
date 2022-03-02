@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net6.0;net461</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>Latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BPlusTree\BPlusTree.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MedallionRandom" Version="1.1.0" />
+    <Reference Include="System.Net.Http" Condition="'$(TargetFramework)' == 'net461'" />
+  </ItemGroup>
+</Project>
