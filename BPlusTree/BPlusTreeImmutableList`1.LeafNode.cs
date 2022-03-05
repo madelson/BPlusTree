@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace BPlusTree
 
             internal override int Count => this.ChildCount;
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal ref T Item(int index)
             {
                 Debug.Assert(index < this.Count);

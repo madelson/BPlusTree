@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -19,12 +20,14 @@ namespace BPlusTree
 
             internal override int Count => this.CumulativeChildCount(this.ChildrenCount - 1);
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal ref int CumulativeChildCount(int index)
             {
                 Debug.Assert(index < this.ChildrenCount);
                 return ref Get(ref this._cumulativeChildCounts, index);
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             internal ref Node Child(int index)
             {
                 Debug.Assert(index < this.ChildrenCount);

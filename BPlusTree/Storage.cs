@@ -16,6 +16,7 @@ namespace BPlusTree
         public const int LeftSplitNodeSize = NodeSize + 1 - RightSplitNodeSize;
         public const int MinimumNodeFill = NodeSize / 4;
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Get<T>(ref Storage8<T> storage, int index)
         {
             Debug.Assert(index is >= 0 and < NodeSize);
@@ -23,6 +24,7 @@ namespace BPlusTree
             return ref Unsafe.Add(ref Unsafe.As<Storage8<T>, T>(ref storage), index);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ref T Get<T>(ref Storage7<T> storage, int index)
         {
             Debug.Assert(index is >= 0 and < NodeSize - 1);
