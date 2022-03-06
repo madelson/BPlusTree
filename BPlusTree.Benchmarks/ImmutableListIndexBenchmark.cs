@@ -19,12 +19,14 @@ namespace BPlusTree.Benchmarks
 
         private ImmutableList<T>? _immutableList;
         private BPlusTreeImmutableList<T>? _bPlusTreeImmutableList;
+        private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
 
         [GlobalSetup]
         public void SetUp()
         {
             _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
             _bPlusTreeImmutableList = BPlusTreeImmutableList.CreateRange(_immutableList);
+            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.CreateRange(_immutableList.ToArray());
         }
 
         [Benchmark]
@@ -46,6 +48,18 @@ namespace BPlusTree.Benchmarks
             for (var i = 1; i < Size; ++i)
             {
                 T value = _bPlusTreeImmutableList[i];
+                if (value.CompareTo(min) < 0) { min = value; }
+            }
+            return min;
+        }
+
+        [Benchmark]
+        public T IndexerIteration_ArrayBasedImmutableList()
+        {
+            T min = _arrayBasedImmutableList![0];
+            for (var i = 1; i < Size; ++i)
+            {
+                T value = _arrayBasedImmutableList[i];
                 if (value.CompareTo(min) < 0) { min = value; }
             }
             return min;
