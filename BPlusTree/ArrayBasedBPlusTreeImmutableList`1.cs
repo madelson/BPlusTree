@@ -213,6 +213,127 @@ namespace BPlusTree
             return leftLeaf;
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> AddRange(IEnumerable<T> items)
+        {
+            if (items is null) { ThrowHelper.ThrowArgumentNull(nameof(items)); }
+
+            var immutableList = items as ArrayBasedBPlusTreeImmutableList<T>;
+            if (immutableList is not null)
+            {
+                if (this.Count == 0) { return immutableList; }
+                if (immutableList.Count == 0) { return this; }
+
+                // todo we can further optimize this case by "stitching together"
+                // the two lists, preserving most existing nodes
+            }
+
+            using var enumerator = items.GetEnumerator();
+
+            if (!enumerator.MoveNext()) { return this; }
+
+            const int MaxInternalLevels = 9;
+            ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders = new(maxLength: MaxInternalLevels);
+            ArrayBuilder<LeafEntry> leafBuilder = new(maxLength: MaxLeafNodeSize);
+            PrePopulateBuilders(_root, ref internalBuilders, ref leafBuilder);
+
+            do
+            {
+                leafBuilder.Add(new() { Item = enumerator.Current });
+                CompleteNodes(ref internalBuilders, ref leafBuilder, force: false);
+            } while (enumerator.MoveNext());
+            CompleteNodes(ref internalBuilders, ref leafBuilder, force: true);
+
+            if (internalBuilders.Length > 0)
+            {
+                InternalEntry[] root = internalBuilders.Last.MoveToArray();
+                return new(root, root[root.Length - 1].CumulativeChildCount);
+            }
+
+            LeafEntry[] rootLeaf = leafBuilder.MoveToArray();
+            return new(rootLeaf, rootLeaf.Length);
+
+            static void CompleteNodes(
+                ref ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders, 
+                ref ArrayBuilder<LeafEntry> leafBuilder,
+                bool force)
+            {
+                var addedLeaf = false;
+                if (force ? (leafBuilder.Length > 0 && internalBuilders.Length > 0) : leafBuilder.Length == MaxLeafNodeSize)
+                {
+                    if (internalBuilders.Length == 0) { internalBuilders.Add(new(maxLength: MaxInternalNodeSize)); }
+                    int cumulativeChildCount = internalBuilders[0].Length > 0 ? internalBuilders[0].Last.CumulativeChildCount + leafBuilder.Length : leafBuilder.Length;
+                    internalBuilders[0].Add(new() { CumulativeChildCount = cumulativeChildCount, Child = leafBuilder.MoveToArray() });
+                    addedLeaf = true;
+                }
+
+                if (force || addedLeaf)
+                {
+                    int topInternalLevel = internalBuilders.Length - 1;
+                    for (var i = 0; i <= topInternalLevel; ++i)
+                    {
+                        ref ArrayBuilder<InternalEntry> internalBuilder = ref internalBuilders[i];
+                        if (force ? internalBuilder.Length > (i == topInternalLevel ? 1 : 0) : internalBuilder.Length == MaxInternalNodeSize)
+                        {
+                            if (i == topInternalLevel) { internalBuilders.Add(new(maxLength: MaxInternalNodeSize)); }
+                            int cumulativeChildCount = internalBuilders[i + 1].Length > 0 
+                                ? internalBuilders[i + 1].Last.CumulativeChildCount + internalBuilder.Last.CumulativeChildCount 
+                                : internalBuilder.Last.CumulativeChildCount;
+                            internalBuilders[i + 1].Add(new() { CumulativeChildCount = cumulativeChildCount, Child = internalBuilder.MoveToArray() });
+                        }
+                        else if (!force) { break; }
+                    }
+                }
+            }
+
+            static void PrePopulateBuilders(Array root, ref ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders, ref ArrayBuilder<LeafEntry> leafBuilder)
+            {
+                ArrayBuilder<Array> leadingNodes = new(maxLength: MaxInternalLevels + 1);
+                Array current = root;
+                while (true)
+                {
+                    leadingNodes.Add(current);
+                    if (current.GetType() == typeof(InternalEntry[]))
+                    {
+                        internalBuilders.Add(new(maxLength: MaxInternalNodeSize));
+                        current = Unsafe.As<InternalEntry[]>(current)[current.Length - 1].Child;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                var firstIndexToOmitFromBuilders = leadingNodes.Length;
+                for (int i = leadingNodes.Length - 1; i >= 0; --i)
+                {
+                    Array node = leadingNodes[i];
+                    if (node.Length == (node.GetType() == typeof(InternalEntry[]) ? MaxInternalNodeSize : MaxLeafNodeSize))
+                    {
+                        firstIndexToOmitFromBuilders = i;
+                    }
+                    else
+                    {
+                        break; // once a node is added, all of its parents are added too
+                    }
+                }
+
+                for (var i = 0; i < firstIndexToOmitFromBuilders; ++i)
+                {
+                    Array node = leadingNodes[i];
+                    if (node.GetType() == typeof(InternalEntry[]))
+                    {
+                        InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+                        internalBuilders[internalBuilders.Length - 1 - i]
+                            .AddRange(internalNode.AsSpan(0, firstIndexToOmitFromBuilders == i + 1 ? internalNode.Length : internalNode.Length - 1));
+                    }
+                    else
+                    {
+                        leafBuilder.AddRange(Unsafe.As<LeafEntry[]>(node));
+                    }
+                }
+            }
+        }
+
         // todo replace with struct enumerator
         public IEnumerator<T> GetEnumerator()
         {
@@ -232,78 +353,6 @@ namespace BPlusTree
             return Unsafe.As<LeafEntry[]>(node).Length;
         }
 
-        // todo remove
-        public static ArrayBasedBPlusTreeImmutableList<T> CreateRange(T[] items)
-        {
-            if (items.Length == 0) { return Empty; }
-
-            var leafQueue = new Queue<LeafEntry[]>();
-            var leafBuilder = new List<LeafEntry>();
-            for (var i = 0; i < items.Length; ++i)
-            {
-                leafBuilder.Add(new() { Item = items[i] });
-                if (leafBuilder.Count == MaxLeafNodeSize)
-                {
-                    leafQueue.Enqueue(leafBuilder.ToArray());
-                    leafBuilder.Clear();
-                }
-            }
-            if (leafBuilder.Count > 0)
-            {
-                leafQueue.Enqueue(leafBuilder.ToArray());
-            }
-                 
-            if (leafQueue.Count == 1) { return new(leafQueue.Single(), leafQueue.Single().Length); }
-
-            var internalQueue = new Queue<InternalEntry[]>();
-            var internalBuilder = new List<InternalEntry>();
-            var builderCount = 0;
-            while (leafQueue.Count > 0)
-            {
-                var leaf = leafQueue.Dequeue();
-                internalBuilder.Add(new() { CumulativeChildCount = builderCount += leaf.Length, Child = leaf });
-                if (internalBuilder.Count == MaxInternalNodeSize)
-                {
-                    internalQueue.Enqueue(internalBuilder.ToArray());
-                    internalBuilder.Clear();
-                    builderCount = 0;
-                }
-            }
-            if (internalBuilder.Count > 0)
-            {
-                internalQueue.Enqueue(internalBuilder.ToArray());
-                internalBuilder.Clear();
-                builderCount = 0;
-            }
-
-            while (internalQueue.Count > 1)
-            {
-                var newInternalQueue = new Queue<InternalEntry[]>();
-                while (internalQueue.Count > 0)
-                {
-                    var node = internalQueue.Dequeue();
-                    internalBuilder.Add(new() { CumulativeChildCount = builderCount += node[node.Length - 1].CumulativeChildCount, Child = node });
-                    if (internalBuilder.Count == MaxInternalNodeSize)
-                    {
-                        newInternalQueue.Enqueue(internalBuilder.ToArray());
-                        internalBuilder.Clear();
-                        builderCount = 0;
-                    }
-                }
-                if (internalBuilder.Count > 0)
-                {
-                    newInternalQueue.Enqueue(internalBuilder.ToArray());
-                    internalBuilder.Clear();
-                    builderCount = 0;
-                }
-                internalQueue = newInternalQueue;
-            }
-
-            var root = internalQueue.Single();
-            Debug.Assert(root[root.Length - 1].CumulativeChildCount == items.Length);
-            return new(root, root[root.Length - 1].CumulativeChildCount);
-        }
- 
         private static int MaxLeafNodeSize
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -27,6 +27,7 @@ namespace BPlusTree.Benchmarks
 
         private ImmutableList<T>? _immutableList;
         private BPlusTreeImmutableList<T>? _bPlusTreeImmutableList;
+        private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
         private (int Index, T Item)[]? _insertionIndices;
 
         [GlobalSetup]
@@ -39,23 +40,26 @@ namespace BPlusTree.Benchmarks
             {
                 _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
                 _bPlusTreeImmutableList = BPlusTreeImmutableList.CreateRange(_immutableList);
+                _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList.ToArray());
             }
             else
             {
                 _immutableList = ImmutableList<T>.Empty;
                 _bPlusTreeImmutableList = BPlusTreeImmutableList<T>.Empty;
+                _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.Empty;
                 for (var i = 0; i < Size; ++i)
                 {
                     var index = random.Next(i + 1);
                     _immutableList = _immutableList.Insert(index, values[i]);
                     _bPlusTreeImmutableList = _bPlusTreeImmutableList.Insert(index, values[i]);
+                    _arrayBasedImmutableList = _arrayBasedImmutableList.Insert(index, values[i]);
                 }
             }
 
             _insertionIndices = new (int, T)[Size];
             for (var i = 0; i < _insertionIndices.Length; ++i)
             {
-                _insertionIndices[i] = (random.Next(i + 1), values[i]);
+                _insertionIndices[i] = (random.Next(Size + i), values[i]);
             }
         }
 
@@ -79,6 +83,17 @@ namespace BPlusTree.Benchmarks
                 bPlusTreeImmutableList = bPlusTreeImmutableList.Insert(index, item);
             }
             return bPlusTreeImmutableList;
+        }
+
+        [Benchmark]
+        public object Insert_ArrayBasedImmutableList()
+        {
+            ArrayBasedBPlusTreeImmutableList<T> arrayBasedImmutableList = _arrayBasedImmutableList!;
+            foreach (var (index, item) in _insertionIndices!)
+            {
+                arrayBasedImmutableList = arrayBasedImmutableList.Insert(index, item);
+            }
+            return arrayBasedImmutableList;
         }
     }
 }

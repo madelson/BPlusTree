@@ -10,5 +10,7 @@ namespace BPlusTree
     {
         public int CumulativeChildCount;
         public Array Child;
+
+        public override string ToString() => $"{nameof(CumulativeChildCount)} = {CumulativeChildCount}, {nameof(Child)} = {Child?.Length} items";
     }
 }

@@ -26,7 +26,7 @@ namespace BPlusTree.Benchmarks
         {
             _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
             _bPlusTreeImmutableList = BPlusTreeImmutableList.CreateRange(_immutableList);
-            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.CreateRange(_immutableList.ToArray());
+            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList.ToArray());
         }
 
         [Benchmark]
