@@ -39,9 +39,9 @@ namespace BPlusTree.Benchmarks
 
         // not implemented
         //[Benchmark]
-        //public object Insert_BPlusTreeImmutableList()
+        //public object Insert_NodeBasedImmutableList()
         //{
-        //    BPlusTreeImmutableList<T> bPlusTreeImmutableList = BPlusTreeImmutableList<T>.Empty;
+        //    NodeBasedBPlusTreeImmutableList<T> bPlusTreeImmutableList = NodeBasedBPlusTreeImmutableList<T>.Empty;
         //    foreach (T value in _values!)
         //    {
         //        bPlusTreeImmutableList = bPlusTreeImmutableList.Add(value);

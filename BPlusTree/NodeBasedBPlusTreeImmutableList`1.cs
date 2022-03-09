@@ -9,14 +9,14 @@ namespace BPlusTree
 {
     using static Storage;
 
-    public sealed partial class BPlusTreeImmutableList<T> : IReadOnlyList<T>
+    public sealed partial class NodeBasedBPlusTreeImmutableList<T> : IReadOnlyList<T>
     {
-        public static BPlusTreeImmutableList<T> Empty { get; } = new(new LeafNode(), count: 0);
+        public static NodeBasedBPlusTreeImmutableList<T> Empty { get; } = new(new LeafNode(), count: 0);
 
         private readonly Node _root;
         private readonly int _count;
 
-        internal BPlusTreeImmutableList(Node root, int count)
+        internal NodeBasedBPlusTreeImmutableList(Node root, int count)
         {
             Debug.Assert(count >= 0);
 
@@ -64,7 +64,7 @@ namespace BPlusTree
             }
         }
 
-        public BPlusTreeImmutableList<T> Insert(int index, T item)
+        public NodeBasedBPlusTreeImmutableList<T> Insert(int index, T item)
         {
             int count = this._count;
             // todo if index == count route through Add(item)
@@ -93,11 +93,11 @@ namespace BPlusTree
         // cumulative counts list since we know we're always following the right branch, and it can
         // maybe extend leaf nodes more efficiently.
 
-        public BPlusTreeImmutableList<T> AddRange(IEnumerable<T> items)
+        public NodeBasedBPlusTreeImmutableList<T> AddRange(IEnumerable<T> items)
         {
             if (items is null) { ThrowHelper.ThrowArgumentNull(nameof(items)); }
 
-            var immutableList = items as BPlusTreeImmutableList<T>;
+            var immutableList = items as NodeBasedBPlusTreeImmutableList<T>;
             if (immutableList is not null)
             {
                 if (this.Count == 0) { return immutableList; }

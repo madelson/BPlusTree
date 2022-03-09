@@ -45,14 +45,14 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark]
-        public object Insert_BPlusTreeImmutableList()
+        public object Insert_NodeBasedImmutableList()
         {
-            BPlusTreeImmutableList<T> bPlusTreeImmutableList = BPlusTreeImmutableList<T>.Empty;
+            NodeBasedBPlusTreeImmutableList<T> nodeBasedImmutableList = NodeBasedBPlusTreeImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
             {
-                bPlusTreeImmutableList = bPlusTreeImmutableList.Insert(index, item);
+                nodeBasedImmutableList = nodeBasedImmutableList.Insert(index, item);
             }
-            return bPlusTreeImmutableList;
+            return nodeBasedImmutableList;
         }
 
         [Benchmark]

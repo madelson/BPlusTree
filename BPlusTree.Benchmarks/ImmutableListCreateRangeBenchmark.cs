@@ -32,8 +32,8 @@ namespace BPlusTree.Benchmarks
             ImmutableList.CreateRange(_itemsArray!);
 
         [Benchmark]
-        public object CreateRangeFromArray_BPlusTreeImmutableList() =>
-            BPlusTreeImmutableList.CreateRange(_itemsArray!);
+        public object CreateRangeFromArray_NodeBasedImmutableList() =>
+            NodeBasedBPlusTreeImmutableList.CreateRange(_itemsArray!);
 
         [Benchmark]
         public object CreateRangeFromArray_ArrayBasedImmutableList() =>
@@ -44,8 +44,8 @@ namespace BPlusTree.Benchmarks
             ImmutableList.CreateRange(_itemsEnumerable!);
 
         [Benchmark]
-        public object CreateRangeFromEnumerable_BPlusTreeImmutableList() =>
-            BPlusTreeImmutableList.CreateRange(_itemsEnumerable!);
+        public object CreateRangeFromEnumerable_NodeBasedImmutableList() =>
+            NodeBasedBPlusTreeImmutableList.CreateRange(_itemsEnumerable!);
 
         [Benchmark]
         public object CreateRangeFromEnumerable_ArrayBasedImmutableList() =>

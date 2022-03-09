@@ -10,7 +10,7 @@ namespace BPlusTree
 {
     using static Storage;
 
-    public partial class BPlusTreeImmutableList<T>
+    public partial class NodeBasedBPlusTreeImmutableList<T>
     {
         internal sealed class InternalNode : Node
         {

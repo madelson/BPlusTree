@@ -14,14 +14,14 @@ namespace BPlusTree.Benchmarks
     [DisassemblyDiagnoser]
     public class ImmutableListAddRangeBenchmark<T> where T : IComparable<T>
     {
-        [Params(50, 512, 10_000)]
+        [Params(50, 10_000)]
         public int Size;
 
-        [Params(50, 512, 10_000)]
+        [Params(50, 10_000)]
         public int AddedSize;
 
         private ImmutableList<T>? _immutableList;
-        private BPlusTreeImmutableList<T>? _bPlusTreeImmutableList;
+        private NodeBasedBPlusTreeImmutableList<T>? _nodeBasedImmutableList;
         private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
         private T[]? _itemsArray;
         private IEnumerable<T>? _itemsEnumerable;
@@ -30,7 +30,7 @@ namespace BPlusTree.Benchmarks
         public void SetUp()
         {
             _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
-            _bPlusTreeImmutableList = BPlusTreeImmutableList.CreateRange(_immutableList);
+            _nodeBasedImmutableList = NodeBasedBPlusTreeImmutableList.CreateRange(_immutableList);
             _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList);
             _itemsArray = ValuesGenerator.UniqueValues<T>(Size).ToArray();
             _itemsEnumerable = _itemsArray.Select(t => t);
@@ -41,8 +41,8 @@ namespace BPlusTree.Benchmarks
             _immutableList!.AddRange(_itemsArray!);
 
         [Benchmark]
-        public object AddRangeArray_BPlusTreeImmutableList() =>
-            _bPlusTreeImmutableList!.AddRange(_itemsArray!);
+        public object AddRangeArray_NodeBasedImmutableList() =>
+            _nodeBasedImmutableList!.AddRange(_itemsArray!);
 
         [Benchmark]
         public object AddRangeArray_ArrayBasedImmutableList() =>
@@ -53,8 +53,8 @@ namespace BPlusTree.Benchmarks
             _immutableList!.AddRange(_itemsEnumerable!);
 
         [Benchmark]
-        public object AddRangeEnumerable_BPlusTreeImmutableList() =>
-            _bPlusTreeImmutableList!.AddRange(_itemsEnumerable!);
+        public object AddRangeEnumerable_NodeBasedImmutableList() =>
+            _nodeBasedImmutableList!.AddRange(_itemsEnumerable!);
 
         [Benchmark]
         public object AddRangeEnumerable_ArrayBasedImmutableList() =>

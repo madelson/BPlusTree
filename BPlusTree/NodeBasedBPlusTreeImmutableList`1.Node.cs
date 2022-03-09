@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BPlusTree
 {
-    public partial class BPlusTreeImmutableList<T>
+    public partial class NodeBasedBPlusTreeImmutableList<T>
     {
         internal abstract class Node
         {
