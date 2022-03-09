@@ -60,10 +60,82 @@ namespace BPlusTree
             }
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> Add(T item)
+        {
+            Array updated = Add(_root, item, out bool isSplit);
+            return isSplit
+                ? new(new InternalEntry[] { new() { Child = _root, CumulativeChildCount = _count }, new() { Child = updated, CumulativeChildCount = _count + 1 } }, _count + 1)
+                : new(updated, _count + 1);
+        }
+
+        private static Array Add(Array node, T item, out bool isSplit)
+        {
+            if (node.GetType() == typeof(InternalEntry[]))
+            {
+                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+
+                Array updatedChild = Add(internalNode[internalNode.Length - 1].Child, item, out bool isChildSplit);
+
+                // case 1: update
+                if (!isChildSplit)
+                {
+                    var updated = new InternalEntry[internalNode.Length];
+                    internalNode.AsSpan().CopyTo(updated);
+                    updated[updated.Length - 1].Child = updatedChild;
+                    ++updated[updated.Length - 1].CumulativeChildCount;
+                    isSplit = false;
+                    return updated;
+                }
+
+                Debug.Assert(GetCount(updatedChild) == 1);
+
+                // case 2: expand
+                if (internalNode.Length < MaxInternalNodeSize)
+                {
+                    var expanded = new InternalEntry[internalNode.Length + 1];
+                    internalNode.AsSpan().CopyTo(expanded);
+                    expanded[expanded.Length - 1] = new()
+                    {
+                        Child = updatedChild,
+                        CumulativeChildCount = expanded.Length > 1 ? expanded[expanded.Length - 2].CumulativeChildCount + 1 : 1
+                    };
+                    isSplit = false;
+                    return expanded;
+                }
+
+                // case 3: "left-leaning" split
+                isSplit = true;
+                return new InternalEntry[] { new() { Child = updatedChild, CumulativeChildCount = 1 } };
+            }
+
+            LeafEntry[] leafNode = Unsafe.As<LeafEntry[]>(node);
+
+            // case 1: expand
+            if (leafNode.Length < MaxLeafNodeSize)
+            {
+                var expandedLeaf = new LeafEntry[leafNode.Length + 1];
+                leafNode.AsSpan().CopyTo(expandedLeaf);
+                expandedLeaf[expandedLeaf.Length - 1].Item = item;
+                isSplit = false;
+                return expandedLeaf;
+            }
+
+            // case 2: "left-leaning" split
+            isSplit = true;
+            return new LeafEntry[] { new() { Item = item } };
+        }
+
         public ArrayBasedBPlusTreeImmutableList<T> Insert(int index, T item)
         {
             var count = _count;
-            if ((uint)index > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            if ((uint)index >= (uint)count) 
+            { 
+                if (index == count)
+                {
+                    return Add(item);
+                }
+                ThrowHelper.ThrowArgumentOutOfRange(); 
+            }
 
             Array inserted = Insert(_root, index, item, out Array? split);
             return split is null

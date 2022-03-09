@@ -36,8 +36,11 @@ namespace BPlusTree.Tests
             Assert.AreEqual(0, empty.Count);
             Assert.IsEmpty(empty);
             Assert.Throws<ArgumentOutOfRangeException>(() => empty[0].ToString());
+            Assert.Throws<ArgumentOutOfRangeException>(() => empty.Insert(-1, 0));
+            Assert.Throws<ArgumentOutOfRangeException>(() => empty.Insert(1, 0));
 
             Assert.AreSame(ArrayBasedBPlusTreeImmutableList<char>.Empty, ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Empty<char>().ToArray()));
+            Assert.AreSame(empty, empty.AddRange(empty));
         }
 
         [Test]
@@ -102,8 +105,36 @@ namespace BPlusTree.Tests
         {
             string[] startingValues = Enumerable.Range(0, startCount).Select(i => $"s{i}").ToArray();
             string[] addedValues = Enumerable.Range(0, addCount).Select(i => $"a{i}").ToArray();
-            BPlusTreeImmutableList<string> list = BPlusTreeImmutableList.CreateRange(startingValues);
+            ArrayBasedBPlusTreeImmutableList<string> list = ArrayBasedBPlusTreeImmutableList.CreateRange(startingValues);
             list = list.AddRange(addedValues);
+            CollectionAssert.AreEqual(startingValues.Concat(addedValues), list);
+        }
+
+        [Test]
+        public void TestAdd()
+        {
+            ArrayBasedBPlusTreeImmutableList<char> list = ArrayBasedBPlusTreeImmutableList<char>.Empty;
+            list = list.Add('x').Add('y').Add('z');
+            CollectionAssert.AreEqual("xyz", list);
+            for (var i = 0; i < 100; ++i)
+            {
+                list = list.Add('m');
+            }
+            CollectionAssert.AreEqual("xyz" + new string('m', 100), list);
+        }
+
+        [Test, Combinatorial]
+        public void TestAddMany(
+            [Values(1, 7, 49, 123, 10000)] int startCount,
+            [Values(1, 7, 49, 123, 10000)] int addCount)
+        {
+            string[] startingValues = Enumerable.Range(0, startCount).Select(i => $"s{i}").ToArray();
+            string[] addedValues = Enumerable.Range(0, addCount).Select(i => $"a{i}").ToArray();
+            ArrayBasedBPlusTreeImmutableList<string> list = startingValues.Aggregate(ArrayBasedBPlusTreeImmutableList<string>.Empty, (l, s) => l.Add(s));
+            foreach (string value in addedValues)
+            {
+                list = list.Add(value);
+            }
             CollectionAssert.AreEqual(startingValues.Concat(addedValues), list);
         }
     }
