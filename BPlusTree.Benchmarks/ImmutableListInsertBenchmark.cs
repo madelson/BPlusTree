@@ -18,16 +18,6 @@ namespace BPlusTree.Benchmarks
         [Params(5, 50, 512, 10_000)]
         public int Size;
 
-        /// <summary>
-        /// <see cref="BPlusTreeImmutableList.CreateRange{T}(IEnumerable{T})"/> creates a more compat tree
-        /// which is less wasteful in terms of memory but initially more costly for insertions in the middle.
-        /// </summary>
-        [Params(false, true)]
-        public bool Compacted;
-
-        private ImmutableList<T>? _immutableList;
-        private BPlusTreeImmutableList<T>? _bPlusTreeImmutableList;
-        private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
         private (int Index, T Item)[]? _insertionIndices;
 
         [GlobalSetup]
@@ -36,37 +26,17 @@ namespace BPlusTree.Benchmarks
             T[] values = ValuesGenerator.UniqueValues<T>(Size).ToArray();
             Random random = Rand.CreateJavaRandom(seed: 654321);
 
-            if (Compacted)
-            {
-                _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
-                _bPlusTreeImmutableList = BPlusTreeImmutableList.CreateRange(_immutableList);
-                _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList.ToArray());
-            }
-            else
-            {
-                _immutableList = ImmutableList<T>.Empty;
-                _bPlusTreeImmutableList = BPlusTreeImmutableList<T>.Empty;
-                _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.Empty;
-                for (var i = 0; i < Size; ++i)
-                {
-                    var index = random.Next(i + 1);
-                    _immutableList = _immutableList.Insert(index, values[i]);
-                    _bPlusTreeImmutableList = _bPlusTreeImmutableList.Insert(index, values[i]);
-                    _arrayBasedImmutableList = _arrayBasedImmutableList.Insert(index, values[i]);
-                }
-            }
-
             _insertionIndices = new (int, T)[Size];
             for (var i = 0; i < _insertionIndices.Length; ++i)
             {
-                _insertionIndices[i] = (random.Next(Size + i), values[i]);
+                _insertionIndices[i] = (random.Next(i + 1), values[i]);
             }
         }
 
         [Benchmark]
         public object Insert_ImmutableList()
         {
-            ImmutableList<T> immutableList = _immutableList!;
+            ImmutableList<T> immutableList = ImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
             {
                 immutableList = immutableList.Insert(index, item);
@@ -77,7 +47,7 @@ namespace BPlusTree.Benchmarks
         [Benchmark]
         public object Insert_BPlusTreeImmutableList()
         {
-            BPlusTreeImmutableList<T> bPlusTreeImmutableList = _bPlusTreeImmutableList!;
+            BPlusTreeImmutableList<T> bPlusTreeImmutableList = BPlusTreeImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
             {
                 bPlusTreeImmutableList = bPlusTreeImmutableList.Insert(index, item);
@@ -88,7 +58,7 @@ namespace BPlusTree.Benchmarks
         [Benchmark]
         public object Insert_ArrayBasedImmutableList()
         {
-            ArrayBasedBPlusTreeImmutableList<T> arrayBasedImmutableList = _arrayBasedImmutableList!;
+            ArrayBasedBPlusTreeImmutableList<T> arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
             {
                 arrayBasedImmutableList = arrayBasedImmutableList.Insert(index, item);
