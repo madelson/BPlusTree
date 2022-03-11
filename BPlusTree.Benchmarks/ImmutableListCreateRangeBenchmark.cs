@@ -17,38 +17,28 @@ namespace BPlusTree.Benchmarks
         [Params(5, 50, 512, 10_000)]
         public int Size;
 
-        private T[]? _itemsArray;
-        private IEnumerable<T>? _itemsEnumerable;
+        [Params(false, true)]
+        public bool Array;
+
+        private IEnumerable<T>? _items;
 
         [GlobalSetup]
         public void SetUp()
         {
-            _itemsArray = ValuesGenerator.UniqueValues<T>(Size).ToArray();
-            _itemsEnumerable = _itemsArray.Select(t => t);
+            T[] items = ValuesGenerator.UniqueValues<T>(Size).ToArray();
+            _items = Array ? items : items.Select(t => t);
         }
 
-        [Benchmark]
-        public object CreateRangeFromArray_ImmutableList() =>
-            ImmutableList.CreateRange(_itemsArray!);
+        [Benchmark(Baseline = true)]
+        public object CreateRange_ImmutableList() =>
+            ImmutableList.CreateRange(_items!);
+
+        //[Benchmark]
+        //public object CreateRange_NodeBasedImmutableList() =>
+        //    NodeBasedBPlusTreeImmutableList.CreateRange(Array ? _itemsArray! : _itemsEnumerable!);
 
         [Benchmark]
-        public object CreateRangeFromArray_NodeBasedImmutableList() =>
-            NodeBasedBPlusTreeImmutableList.CreateRange(_itemsArray!);
-
-        [Benchmark]
-        public object CreateRangeFromArray_ArrayBasedImmutableList() =>
-            ArrayBasedBPlusTreeImmutableList.CreateRange(_itemsArray!);
-
-        [Benchmark]
-        public object CreateRangeFromEnumerable_ImmutableList() =>
-            ImmutableList.CreateRange(_itemsEnumerable!);
-
-        [Benchmark]
-        public object CreateRangeFromEnumerable_NodeBasedImmutableList() =>
-            NodeBasedBPlusTreeImmutableList.CreateRange(_itemsEnumerable!);
-
-        [Benchmark]
-        public object CreateRangeFromEnumerable_ArrayBasedImmutableList() =>
-            ArrayBasedBPlusTreeImmutableList.CreateRange(_itemsEnumerable!);
+        public object CreateRange_ArrayBasedImmutableList() =>
+            ArrayBasedBPlusTreeImmutableList.CreateRange(_items!);
     }
 }

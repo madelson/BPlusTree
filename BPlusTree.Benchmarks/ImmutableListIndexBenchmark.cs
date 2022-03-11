@@ -18,18 +18,18 @@ namespace BPlusTree.Benchmarks
         public int Size;
 
         private ImmutableList<T>? _immutableList;
-        private NodeBasedBPlusTreeImmutableList<T>? _nodeBasedTreeImmutableList;
+        //private NodeBasedBPlusTreeImmutableList<T>? _nodeBasedTreeImmutableList;
         private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
 
         [GlobalSetup]
         public void SetUp()
         {
             _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
-            _nodeBasedTreeImmutableList = NodeBasedBPlusTreeImmutableList.CreateRange(_immutableList);
+            //_nodeBasedTreeImmutableList = NodeBasedBPlusTreeImmutableList.CreateRange(_immutableList);
             _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList.ToArray());
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public T IndexerIteration_ImmutableList()
         {
             T min = _immutableList![0];
@@ -41,17 +41,17 @@ namespace BPlusTree.Benchmarks
             return min;
         }
 
-        [Benchmark]
-        public T IndexerIteration_NodeBasedImmutableList()
-        {
-            T min = _nodeBasedTreeImmutableList![0];
-            for (var i = 1; i < Size; ++i)
-            {
-                T value = _nodeBasedTreeImmutableList[i];
-                if (value.CompareTo(min) < 0) { min = value; }
-            }
-            return min;
-        }
+        //[Benchmark]
+        //public T IndexerIteration_NodeBasedImmutableList()
+        //{
+        //    T min = _nodeBasedTreeImmutableList![0];
+        //    for (var i = 1; i < Size; ++i)
+        //    {
+        //        T value = _nodeBasedTreeImmutableList[i];
+        //        if (value.CompareTo(min) < 0) { min = value; }
+        //    }
+        //    return min;
+        //}
 
         [Benchmark]
         public T IndexerIteration_ArrayBasedImmutableList()

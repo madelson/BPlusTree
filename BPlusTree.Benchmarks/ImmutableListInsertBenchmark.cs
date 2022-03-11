@@ -33,7 +33,7 @@ namespace BPlusTree.Benchmarks
             }
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public object Insert_ImmutableList()
         {
             ImmutableList<T> immutableList = ImmutableList<T>.Empty;
@@ -44,16 +44,16 @@ namespace BPlusTree.Benchmarks
             return immutableList;
         }
 
-        [Benchmark]
-        public object Insert_NodeBasedImmutableList()
-        {
-            NodeBasedBPlusTreeImmutableList<T> nodeBasedImmutableList = NodeBasedBPlusTreeImmutableList<T>.Empty;
-            foreach (var (index, item) in _insertionIndices!)
-            {
-                nodeBasedImmutableList = nodeBasedImmutableList.Insert(index, item);
-            }
-            return nodeBasedImmutableList;
-        }
+        //[Benchmark]
+        //public object Insert_NodeBasedImmutableList()
+        //{
+        //    NodeBasedBPlusTreeImmutableList<T> nodeBasedImmutableList = NodeBasedBPlusTreeImmutableList<T>.Empty;
+        //    foreach (var (index, item) in _insertionIndices!)
+        //    {
+        //        nodeBasedImmutableList = nodeBasedImmutableList.Insert(index, item);
+        //    }
+        //    return nodeBasedImmutableList;
+        //}
 
         [Benchmark]
         public object Insert_ArrayBasedImmutableList()

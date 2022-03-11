@@ -26,7 +26,7 @@ namespace BPlusTree.Benchmarks
             _values = ValuesGenerator.UniqueValues<T>(Size).ToArray();
         }
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public object Insert_ImmutableList()
         {
             ImmutableList<T> immutableList = ImmutableList<T>.Empty;
