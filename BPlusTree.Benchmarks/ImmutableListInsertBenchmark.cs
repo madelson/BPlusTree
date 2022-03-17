@@ -1,5 +1,4 @@
 ﻿using BenchmarkDotNet.Attributes;
-using Medallion;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -24,7 +23,7 @@ namespace BPlusTree.Benchmarks
         public void SetUp()
         {
             T[] values = ValuesGenerator.UniqueValues<T>(Size).ToArray();
-            Random random = Rand.CreateJavaRandom(seed: 654321);
+            var random = new Random(654321);
 
             _insertionIndices = new (int, T)[Size];
             for (var i = 0; i < _insertionIndices.Length; ++i)
@@ -34,7 +33,7 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark(Baseline = true)]
-        public object Insert_ImmutableList()
+        public object ImmutableList()
         {
             ImmutableList<T> immutableList = ImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
@@ -44,19 +43,8 @@ namespace BPlusTree.Benchmarks
             return immutableList;
         }
 
-        //[Benchmark]
-        //public object Insert_NodeBasedImmutableList()
-        //{
-        //    NodeBasedBPlusTreeImmutableList<T> nodeBasedImmutableList = NodeBasedBPlusTreeImmutableList<T>.Empty;
-        //    foreach (var (index, item) in _insertionIndices!)
-        //    {
-        //        nodeBasedImmutableList = nodeBasedImmutableList.Insert(index, item);
-        //    }
-        //    return nodeBasedImmutableList;
-        //}
-
         [Benchmark]
-        public object Insert_ArrayBasedImmutableList()
+        public object ArrayBasedImmutableList()
         {
             ArrayBasedBPlusTreeImmutableList<T> arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)

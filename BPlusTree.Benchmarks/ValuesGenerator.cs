@@ -1,5 +1,4 @@
-﻿using Medallion;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,7 +10,7 @@ namespace BPlusTree.Benchmarks
     {
         public static IEnumerable<T> UniqueValues<T>(int count)
         {
-            Random random = Rand.CreateJavaRandom(seed: 12345);
+            var random = new Random(123456);
             return Enumerable.Range(0, count)
                 .OrderBy(_ => random.Next())
                 .Select(

@@ -24,31 +24,30 @@ namespace BPlusTree.Benchmarks
         public bool Array;
 
         private ImmutableList<T>? _immutableList;
-        //private NodeBasedBPlusTreeImmutableList<T>? _nodeBasedImmutableList;
         private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
         private IEnumerable<T>? _items;
 
         [GlobalSetup]
         public void SetUp()
-        {
-            _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
-            //_nodeBasedImmutableList = NodeBasedBPlusTreeImmutableList.CreateRange(_immutableList);
-            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList);
-            
+        {            
             T[] items = ValuesGenerator.UniqueValues<T>(Size).ToArray();
             _items = Array ? items : items.Select(t => t);
         }
 
+        [GlobalSetup(Target = nameof(ImmutableList))]
+        public void SetUpImmutableList() =>
+            _immutableList = System.Collections.Immutable.ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
+
         [Benchmark(Baseline = true)]
-        public object AddRange_ImmutableList() =>
+        public object ImmutableList() =>
             _immutableList!.AddRange(_items!);
 
-        //[Benchmark]
-        //public object AddRangeArray_NodeBasedImmutableList() =>
-        //    _nodeBasedImmutableList!.AddRange(_itemsArray!);
+        [GlobalSetup(Target = nameof(ArrayBasedImmutableList))]
+        public void SetUpArrayBasedImmutableList() =>
+            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
 
         [Benchmark]
-        public object AddRange_ArrayBasedImmutableList() =>
+        public object ArrayBasedImmutableList() =>
             _arrayBasedImmutableList!.AddRange(_items!);
     }
 }

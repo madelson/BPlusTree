@@ -18,19 +18,14 @@ namespace BPlusTree.Benchmarks
         public int Size;
 
         private ImmutableList<T>? _immutableList;
-        //private NodeBasedBPlusTreeImmutableList<T>? _nodeBasedTreeImmutableList;
         private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
 
-        [GlobalSetup]
-        public void SetUp()
-        {
-            _immutableList = ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
-            //_nodeBasedTreeImmutableList = NodeBasedBPlusTreeImmutableList.CreateRange(_immutableList);
-            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(_immutableList.ToArray());
-        }
+        [GlobalSetup(Target = nameof(ImmutableList))]
+        public void SetUpImmutableList() =>
+            _immutableList = System.Collections.Immutable.ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
 
         [Benchmark(Baseline = true)]
-        public T IndexerIteration_ImmutableList()
+        public T ImmutableList()
         {
             T min = _immutableList![0];
             for (var i = 1; i < Size; ++i)
@@ -41,20 +36,12 @@ namespace BPlusTree.Benchmarks
             return min;
         }
 
-        //[Benchmark]
-        //public T IndexerIteration_NodeBasedImmutableList()
-        //{
-        //    T min = _nodeBasedTreeImmutableList![0];
-        //    for (var i = 1; i < Size; ++i)
-        //    {
-        //        T value = _nodeBasedTreeImmutableList[i];
-        //        if (value.CompareTo(min) < 0) { min = value; }
-        //    }
-        //    return min;
-        //}
+        [GlobalSetup(Target = nameof(ArrayBasedImmutableList))]
+        public void SetUpArrayBasedImmutableList() =>
+            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
 
         [Benchmark]
-        public T IndexerIteration_ArrayBasedImmutableList()
+        public T ArrayBasedImmutableList()
         {
             T min = _arrayBasedImmutableList![0];
             for (var i = 1; i < Size; ++i)

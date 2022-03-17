@@ -30,15 +30,11 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark(Baseline = true)]
-        public object CreateRange_ImmutableList() =>
-            ImmutableList.CreateRange(_items!);
-
-        //[Benchmark]
-        //public object CreateRange_NodeBasedImmutableList() =>
-        //    NodeBasedBPlusTreeImmutableList.CreateRange(Array ? _itemsArray! : _itemsEnumerable!);
+        public object ImmutableList() =>
+            System.Collections.Immutable.ImmutableList.CreateRange(_items!);
 
         [Benchmark]
-        public object CreateRange_ArrayBasedImmutableList() =>
+        public object ArrayBasedImmutableList() =>
             ArrayBasedBPlusTreeImmutableList.CreateRange(_items!);
     }
 }

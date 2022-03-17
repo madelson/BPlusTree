@@ -1,5 +1,4 @@
 ﻿using BenchmarkDotNet.Attributes;
-using Medallion;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -27,7 +26,7 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark(Baseline = true)]
-        public object Insert_ImmutableList()
+        public object ImmutableList()
         {
             ImmutableList<T> immutableList = ImmutableList<T>.Empty;
             foreach (T value in _values!)
@@ -37,20 +36,8 @@ namespace BPlusTree.Benchmarks
             return immutableList;
         }
 
-        // not implemented
-        //[Benchmark]
-        //public object Insert_NodeBasedImmutableList()
-        //{
-        //    NodeBasedBPlusTreeImmutableList<T> bPlusTreeImmutableList = NodeBasedBPlusTreeImmutableList<T>.Empty;
-        //    foreach (T value in _values!)
-        //    {
-        //        bPlusTreeImmutableList = bPlusTreeImmutableList.Add(value);
-        //    }
-        //    return bPlusTreeImmutableList;
-        //}
-
         [Benchmark]
-        public object Insert_ArrayBasedImmutableList()
+        public object ArrayBasedImmutableList()
         {
             ArrayBasedBPlusTreeImmutableList<T> arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.Empty;
             foreach (T value in _values!)
