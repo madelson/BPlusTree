@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using TunnelVisionLabs.Collections.Trees.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -52,6 +53,17 @@ namespace BPlusTree.Benchmarks
                 arrayBasedImmutableList = arrayBasedImmutableList.Insert(index, item);
             }
             return arrayBasedImmutableList;
+        }
+
+        [Benchmark]
+        public object TunnelVisionImmutableList()
+        {
+            ImmutableTreeList<T> tunnelVisionImmutableList = ImmutableTreeList<T>.Empty;
+            foreach (var (index, item) in _insertionIndices!)
+            {
+                tunnelVisionImmutableList = tunnelVisionImmutableList.Insert(index, item);
+            }
+            return tunnelVisionImmutableList;
         }
     }
 }

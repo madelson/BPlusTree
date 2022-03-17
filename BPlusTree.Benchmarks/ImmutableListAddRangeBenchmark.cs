@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using TunnelVisionLabs.Collections.Trees.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,18 +26,21 @@ namespace BPlusTree.Benchmarks
 
         private ImmutableList<T>? _immutableList;
         private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
+        private ImmutableTreeList<T>? _tunnelVisionImmutableList;
         private IEnumerable<T>? _items;
 
-        [GlobalSetup]
-        public void SetUp()
-        {            
-            T[] items = ValuesGenerator.UniqueValues<T>(Size).ToArray();
-            _items = Array ? items : items.Select(t => t);
+        private void SetUpHelper<TList>(ref TList listField, Func<IEnumerable<T>, TList> createRange)
+        {
+            T[] allItems = ValuesGenerator.UniqueValues<T>(2 * Size).ToArray();
+            IEnumerable<T> items = allItems.Take(Size);
+            _items = Array ? items.ToArray() : items;
+
+            listField = createRange(allItems.Skip(Size));
         }
 
         [GlobalSetup(Target = nameof(ImmutableList))]
         public void SetUpImmutableList() =>
-            _immutableList = System.Collections.Immutable.ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
+            SetUpHelper(ref _immutableList, System.Collections.Immutable.ImmutableList.CreateRange<T>);
 
         [Benchmark(Baseline = true)]
         public object ImmutableList() =>
@@ -44,10 +48,18 @@ namespace BPlusTree.Benchmarks
 
         [GlobalSetup(Target = nameof(ArrayBasedImmutableList))]
         public void SetUpArrayBasedImmutableList() =>
-            _arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
+            SetUpHelper(ref _arrayBasedImmutableList, ArrayBasedBPlusTreeImmutableList.CreateRange<T>);
 
         [Benchmark]
         public object ArrayBasedImmutableList() =>
             _arrayBasedImmutableList!.AddRange(_items!);
+
+        [GlobalSetup(Target = nameof(TunnelVisionImmutableList))]
+        public void SetUpTunnelVisionImmutableList() =>
+            SetUpHelper(ref _tunnelVisionImmutableList, ImmutableTreeList.CreateRange<T>);
+
+        [Benchmark]
+        public object TunnelVisionImmutableList() =>
+            _tunnelVisionImmutableList!.AddRange(_items!);
     }
 }

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using TunnelVisionLabs.Collections.Trees.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ namespace BPlusTree.Benchmarks
 
         private ImmutableList<T>? _immutableList;
         private ArrayBasedBPlusTreeImmutableList<T>? _arrayBasedImmutableList;
+        private ImmutableTreeList<T>? _tunnelVisionImmutableList;
 
         [GlobalSetup(Target = nameof(ImmutableList))]
         public void SetUpImmutableList() =>
@@ -47,6 +49,22 @@ namespace BPlusTree.Benchmarks
             for (var i = 1; i < Size; ++i)
             {
                 T value = _arrayBasedImmutableList[i];
+                if (value.CompareTo(min) < 0) { min = value; }
+            }
+            return min;
+        }
+
+        [GlobalSetup(Target = nameof(TunnelVisionImmutableList))]
+        public void SetUpTunnelVisionImmutableList() =>
+            _tunnelVisionImmutableList = ImmutableTreeList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
+
+        [Benchmark]
+        public T TunnelVisionImmutableList()
+        {
+            T min = _tunnelVisionImmutableList![0];
+            for (var i = 1; i < Size; ++i)
+            {
+                T value = _tunnelVisionImmutableList[i];
                 if (value.CompareTo(min) < 0) { min = value; }
             }
             return min;

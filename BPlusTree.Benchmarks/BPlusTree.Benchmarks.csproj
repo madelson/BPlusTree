@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" Version="0.13.1" />
+    <PackageReference Include="TunnelVisionLabs.Collections.Trees" Version="1.0.0-alpha.74" />
   </ItemGroup>
 
   <ItemGroup>

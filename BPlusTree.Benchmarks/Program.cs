@@ -1,6 +1,8 @@
 ﻿using BenchmarkDotNet.Running;
 using BPlusTree.Benchmarks;
 
+//BenchmarkRunner.Run(typeof(ImmutableListAddRangeBenchmark<string>));
+
 BenchmarkSwitcher
     .FromAssembly(typeof(Program).Assembly)
     .RunAll();
@@ -16,8 +18,6 @@ BenchmarkSwitcher
 //        b.Insert_NodeBasedImmutableList();
 //    }
 //}
-
-//BenchmarkRunner.Run(typeof(ImmutableListInsertBenchmark<string>));
 
 //args = new[] { "--filter", "*", "--cli", @"C:\Program Files\dotnet\dotnet.exe" };
 
