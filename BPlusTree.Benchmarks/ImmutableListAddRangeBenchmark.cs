@@ -31,11 +31,11 @@ namespace BPlusTree.Benchmarks
 
         private void SetUpHelper<TList>(ref TList listField, Func<IEnumerable<T>, TList> createRange)
         {
-            T[] allItems = ValuesGenerator.UniqueValues<T>(2 * Size).ToArray();
-            IEnumerable<T> items = allItems.Take(Size);
+            T[] allItems = ValuesGenerator.UniqueValues<T>(Size + AddedSize).ToArray();
+            IEnumerable<T> items = allItems.Take(AddedSize);
             _items = Array ? items.ToArray() : items;
 
-            listField = createRange(allItems.Skip(Size));
+            listField = createRange(allItems.Skip(AddedSize));
         }
 
         [GlobalSetup(Target = nameof(ImmutableList))]

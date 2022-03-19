@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -10,7 +11,7 @@ namespace BPlusTree
 {
     using InternalEntry = ArrayBasedBPlusTreeImmutableListInternalEntry;
 
-    public sealed class ArrayBasedBPlusTreeImmutableList<T> : IReadOnlyList<T>
+    public sealed class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>
     {
         public static ArrayBasedBPlusTreeImmutableList<T> Empty { get; } = new(Array.Empty<LeafEntry>(), 0);
 
@@ -57,6 +58,37 @@ namespace BPlusTree
                 {
                     return ref Unsafe.As<LeafEntry[]>(current)[index].Item;
                 }
+            }
+        }
+
+        public ArrayBasedBPlusTreeImmutableList<T> SetItem(int index, T item)
+        {
+            if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+
+            return new(SetItem(_root, index, item), _count);
+        }
+
+        private static Array SetItem(Array node, int index, T item)
+        {
+            if (node.GetType() == typeof(InternalEntry[]))
+            {
+                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+
+                var childIndex = 0;
+                while (childIndex < internalNode.Length - 1 && internalNode[childIndex].CumulativeChildCount <= index) { ++childIndex; }
+
+                var updatedNode = internalNode.Copy();
+                updatedNode[childIndex].Child = SetItem(
+                    updatedNode[childIndex].Child,
+                    childIndex == 0 ? index : index - updatedNode[childIndex - 1].CumulativeChildCount,
+                    item);
+                return updatedNode;
+            }
+            else
+            {
+                LeafEntry[] updatedLeafNode = Unsafe.As<LeafEntry[]>(node).Copy();
+                updatedLeafNode[index].Item = item;
+                return updatedLeafNode;
             }
         }
 
@@ -484,5 +516,62 @@ namespace BPlusTree
                 Debug.Assert(internalNode[i].CumulativeChildCount - (i > 0 ? internalNode[i - 1].CumulativeChildCount : 0) == GetCount(internalNode[i].Child));
             }
         }
+
+        IImmutableList<T> IImmutableList<T>.Add(T value) => Add(value);
+        IImmutableList<T> IImmutableList<T>.AddRange(IEnumerable<T> items) => AddRange(items);
+
+        IImmutableList<T> IImmutableList<T>.Clear()
+        {
+            throw new NotImplementedException();
+        }
+
+        public int IndexOf(T item, int index, int count, IEqualityComparer<T>? equalityComparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.Insert(int index, T item) => Insert(index, item);
+
+        IImmutableList<T> IImmutableList<T>.InsertRange(int index, IEnumerable<T> items)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int LastIndexOf(T item, int index, int count, IEqualityComparer<T>? equalityComparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.Remove(T value, IEqualityComparer<T>? equalityComparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.RemoveAll(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.RemoveAt(int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.RemoveRange(IEnumerable<T> items, IEqualityComparer<T>? equalityComparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.RemoveRange(int index, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.Replace(T oldValue, T newValue, IEqualityComparer<T>? equalityComparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        IImmutableList<T> IImmutableList<T>.SetItem(int index, T value) => SetItem(index, value);
     }
 }

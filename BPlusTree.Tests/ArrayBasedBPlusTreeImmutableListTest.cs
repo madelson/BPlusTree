@@ -30,6 +30,18 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestSetItem()
+        {
+            ArrayBasedBPlusTreeImmutableList<int> list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 5000));
+            for (var i = 0; i < list.Count; ++i)
+            {
+                list = list.SetItem(i, list[i] * list[i]);
+            }
+
+            CollectionAssert.AreEqual(Enumerable.Range(0, 5000).Select(i => i * i), list);
+        }
+
+        [Test]
         public void TestEmpty()
         {
             ArrayBasedBPlusTreeImmutableList<int> empty = ArrayBasedBPlusTreeImmutableList<int>.Empty;
