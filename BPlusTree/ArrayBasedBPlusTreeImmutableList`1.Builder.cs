@@ -27,6 +27,7 @@ namespace BPlusTree
                 _root = root;
                 _count = count;
             }
+
             public int Count => _count;
 
             public T this[int index] 
