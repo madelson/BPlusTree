@@ -26,6 +26,19 @@ namespace BPlusTree.Tests
         public void TestSetItemCompat() =>
             TestCompat((l, r) => l.SetItem(r.Next(l.Count), r.Next()));
 
+        [Test]
+        public void TestBuilderSetItemCompat() =>
+            TestCompat((l, r) =>
+            {
+                IList<int> builder = ToBuilder(l);
+                var modifyCount = r.Next(builder.Count + 1);
+                for (var i = 0; i < modifyCount; ++i)
+                {
+                    builder[r.Next(builder.Count)] = r.Next();
+                }
+                return ToImmutable(builder);
+            });
+
         private static void TestCompat(Func<IImmutableList<int>, Random, IImmutableList<int>> transform)
         {
             var sizes = new[] { 5, 50, 500 };
@@ -55,5 +68,21 @@ namespace BPlusTree.Tests
                 }
             }
         }
+
+        private static IList<T> ToBuilder<T>(IImmutableList<T> list) =>
+            list switch
+            {
+                ImmutableList<T> immutableList => immutableList.ToBuilder(),
+                ArrayBasedBPlusTreeImmutableList<T> arrayBasedList => arrayBasedList.ToBuilder(),
+                _ => throw new NotSupportedException(list.GetType().FullName),
+            };
+
+        private static IImmutableList<T> ToImmutable<T>(IList<T> builder) =>
+            builder switch
+            {
+                ImmutableList<T>.Builder immutableListBuilder => immutableListBuilder.ToImmutable(),
+                ArrayBasedBPlusTreeImmutableList<T>.Builder arrayBasedBuilder => arrayBasedBuilder.ToImmutable(),
+                _ => throw new NotSupportedException(builder.GetType().FullName),
+            };
     }
 }

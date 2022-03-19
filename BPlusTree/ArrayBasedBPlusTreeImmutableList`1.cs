@@ -11,7 +11,7 @@ namespace BPlusTree
 {
     using InternalEntry = ArrayBasedBPlusTreeImmutableListInternalEntry;
 
-    public sealed class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>
+    public sealed partial class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>
     {
         public static ArrayBasedBPlusTreeImmutableList<T> Empty { get; } = new(Array.Empty<LeafEntry>(), 0);
 
@@ -512,6 +512,7 @@ namespace BPlusTree
             Debug.Assert(internalNode.Length <= MaxInternalNodeSize);
             for (var i = 0; i < internalNode.Length; ++i)
             {
+                Debug.Assert(!internalNode[i].IsChildMutable);
                 AssertValid(internalNode[i].Child);
                 Debug.Assert(internalNode[i].CumulativeChildCount - (i > 0 ? internalNode[i - 1].CumulativeChildCount : 0) == GetCount(internalNode[i].Child));
             }

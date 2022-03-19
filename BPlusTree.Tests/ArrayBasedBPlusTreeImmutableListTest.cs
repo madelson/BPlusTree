@@ -149,5 +149,22 @@ namespace BPlusTree.Tests
             }
             CollectionAssert.AreEqual(startingValues.Concat(addedValues), list);
         }
+
+        [Test]
+        public void TestBuilderSetItem()
+        {
+            ArrayBasedBPlusTreeImmutableList<string> list = ArrayBasedBPlusTreeImmutableList.CreateRange(new[] { "a", "b" });
+            ArrayBasedBPlusTreeImmutableList<string>.Builder builder = list.ToBuilder();
+            Assert.AreEqual(list.Count, builder.Count);
+            CollectionAssert.AreEqual(list, builder);
+            CollectionAssert.AreEqual(list, builder.ToImmutable());
+
+            builder[1] = "c";
+            Assert.AreEqual("c", builder[1]);
+            CollectionAssert.AreNotEqual(list, builder);
+            CollectionAssert.AreNotEqual(list, builder.ToImmutable());
+            CollectionAssert.AreEqual(list.SetItem(1, "c"), builder);
+            CollectionAssert.AreEqual(list.SetItem(1, "c"), builder.ToImmutable());
+        }
     }
 }

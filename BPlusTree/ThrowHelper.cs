@@ -16,5 +16,9 @@ namespace BPlusTree
         [DoesNotReturn]
         public static void ThrowArgumentNull(string parameterName) =>
             throw new ArgumentNullException(parameterName);
+
+        [DoesNotReturn]
+        public static void ThrowVersionChanged() =>
+            throw new InvalidOperationException("Collection was modified during enumeration");
     }
 }

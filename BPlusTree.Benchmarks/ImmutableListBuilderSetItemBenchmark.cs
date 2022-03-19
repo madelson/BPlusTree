@@ -13,7 +13,7 @@ namespace BPlusTree.Benchmarks
     [GenericTypeArguments(typeof(string))]
     [MemoryDiagnoser]
     [DisassemblyDiagnoser]
-    public class ImmutableListSetItemBenchmark<T> where T : IComparable<T>
+    public class ImmutableListBuilderSetItemBenchmark<T> where T : IComparable<T>
     {
         [Params(5, 50, 512, 10_000)]
         public int Size;
@@ -27,47 +27,47 @@ namespace BPlusTree.Benchmarks
         public void SetUpImmutableList() => SetUpHelper(ref _immutableList, System.Collections.Immutable.ImmutableList.CreateRange<T>);
 
         [Benchmark(Baseline = true)]
-        public object ImmutableList()
+        public ImmutableList<T> ImmutableList()
         {
-            var immutableList = _immutableList!;
+            var builder = _immutableList!.ToBuilder();
             foreach (var (index, item) in _sets)
             {
-                immutableList = immutableList.SetItem(index, item);
+                builder[index] = item;
             }
-            return immutableList;
+            return builder.ToImmutable();
         }
 
         [GlobalSetup(Target = nameof(ArrayBasedImmutableList))]
         public void SetUpArrayBasedImmutableList() => SetUpHelper(ref _arrayBasedImmutableList, ArrayBasedBPlusTreeImmutableList.CreateRange<T>);
 
         [Benchmark]
-        public object ArrayBasedImmutableList()
+        public ArrayBasedBPlusTreeImmutableList<T> ArrayBasedImmutableList()
         {
-            var immutableList = _arrayBasedImmutableList!;
+            var builder = _arrayBasedImmutableList!.ToBuilder();
             foreach (var (index, item) in _sets)
             {
-                immutableList = immutableList.SetItem(index, item);
+                builder[index] = item;
             }
-            return immutableList;
+            return builder.ToImmutable();
         }
 
         [GlobalSetup(Target = nameof(TunnelVisionImmutableList))]
         public void SetUpTunnelVisionImmutableList() => SetUpHelper(ref _tunnelVisionImmutableList, ImmutableTreeList.CreateRange<T>);
 
         [Benchmark]
-        public object TunnelVisionImmutableList()
+        public ImmutableTreeList<T> TunnelVisionImmutableList()
         {
-            var immutableList = _tunnelVisionImmutableList!;
+            var builder = _tunnelVisionImmutableList!.ToBuilder();
             foreach (var (index, item) in _sets)
             {
-                immutableList = immutableList.SetItem(index, item);
+                builder[index] = item;
             }
-            return immutableList;
+            return builder.ToImmutable();
         }
 
         private void SetUpHelper<TList>(ref TList listField, Func<IEnumerable<T>, TList> createRange)
         {
-            var items = ValuesGenerator.UniqueValues<T>(2 * Size);
+            var items = ValuesGenerator.UniqueValues<T>((int)(1.25 * Size));
             listField = createRange(items.Take(Size));
 
             var random = new Random(12345);
