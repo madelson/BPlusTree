@@ -376,7 +376,7 @@ namespace BPlusTree
                     for (var i = 0; i <= topInternalLevel; ++i)
                     {
                         ref ArrayBuilder<InternalEntry> internalBuilder = ref internalBuilders[i];
-                        if (force ? internalBuilder.Length > (i == topInternalLevel ? 1 : 0) : internalBuilder.Length == MaxInternalNodeSize)
+                        if ((force && i != topInternalLevel) ? internalBuilder.Length > 0 : internalBuilder.Length == MaxInternalNodeSize)
                         {
                             if (i == topInternalLevel) { internalBuilders.Add(new(maxLength: MaxInternalNodeSize)); }
                             int cumulativeChildCount = internalBuilders[i + 1].Length > 0 
@@ -518,17 +518,80 @@ namespace BPlusTree
             }
         }
 
+        private delegate bool Scanner<TState>(ReadOnlySpan<T> items, ref TState state);
+
+        private static bool ScanForward<TState>(Array node, Scanner<TState> scanner, int startIndex, ref TState state)
+        {
+            if (node.GetType() == typeof(InternalEntry[]))
+            {
+                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+                var childIndex = 0;
+                if (startIndex != 0)
+                {
+                    while (internalNode[childIndex].CumulativeChildCount <= startIndex) { ++childIndex; }
+                    if (ScanForward(
+                        internalNode[childIndex].Child, 
+                        scanner, 
+                        startIndex: childIndex == 0 ? startIndex : startIndex - internalNode[childIndex - 1].CumulativeChildCount, 
+                        ref state))
+                    {
+                        return true;
+                    }
+                    ++childIndex;
+                }
+
+                while (childIndex < internalNode.Length)
+                {
+                    if (ScanForward(internalNode[childIndex++].Child, scanner, startIndex: 0, ref state))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+                
+            return scanner(new ReadOnlySpan<T>(Unsafe.As<T[]>(node)).Slice(startIndex), ref state);
+        }
+
         IImmutableList<T> IImmutableList<T>.Add(T value) => Add(value);
         IImmutableList<T> IImmutableList<T>.AddRange(IEnumerable<T> items) => AddRange(items);
 
-        IImmutableList<T> IImmutableList<T>.Clear()
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.Clear() => Empty;
 
         public int IndexOf(T item, int index, int count, IEqualityComparer<T>? equalityComparer)
         {
-            throw new NotImplementedException();
+            if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            if ((uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+            if (index + count > _count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(index)} + {nameof(count)}"); }
+
+            var state = (Remaining: count, item, equalityComparer ?? EqualityComparer<T>.Default);
+            return ScanForward(_root, IndexOfHelper, index, ref state)
+                ? (state.Remaining < 0 ? -1 : index + (count - state.Remaining))
+                : -1;
+
+            static bool IndexOfHelper(ReadOnlySpan<T> items, ref (int Remaining, T Item, IEqualityComparer<T> Comparer) state)
+            {
+                for (var i = 0; i < items.Length; i++)
+                {
+                    if (i >= state.Remaining)
+                    {
+                        break;
+                    }
+                    if (state.Comparer.Equals(items[i], state.Item))
+                    {
+                        state.Remaining -= i;
+                        return true; // break
+                    }
+                }
+
+                if ((state.Remaining -= items.Length) <= 0)
+                {
+                    state.Remaining = -1;
+                    return true; // break
+                }
+                return false; // continue
+            }
         }
 
         IImmutableList<T> IImmutableList<T>.Insert(int index, T item) => Insert(index, item);

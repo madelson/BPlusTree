@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -165,6 +166,20 @@ namespace BPlusTree.Tests
             CollectionAssert.AreNotEqual(list, builder.ToImmutable());
             CollectionAssert.AreEqual(list.SetItem(1, "c"), builder);
             CollectionAssert.AreEqual(list.SetItem(1, "c"), builder.ToImmutable());
+        }
+
+        [Test]
+        public void TestIndexOf()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(
+                Enumerable.Range(0, 32).Concat(Enumerable.Range(0, 32)).Select(i => i.ToString()));
+
+            Assert.AreEqual(0, list.IndexOf("0"));
+            Assert.AreEqual(-1, list.IndexOf("x"));
+            Assert.AreEqual(33, list.IndexOf("1", startIndex: 5));
+            Assert.AreEqual(-1, list.IndexOf("19", startIndex: list.Count - 5));
+            Assert.AreEqual(5, list.IndexOf("5", startIndex: 2, count: 4));
+            Assert.AreEqual(-1, list.IndexOf("30", startIndex: 20, count: 9));
         }
     }
 }

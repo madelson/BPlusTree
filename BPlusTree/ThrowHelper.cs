@@ -10,8 +10,8 @@ namespace BPlusTree
     internal static class ThrowHelper
     {
         [DoesNotReturn]
-        public static void ThrowArgumentOutOfRange() =>
-            throw new ArgumentOutOfRangeException("index", "Index was out of range. Must be non-negative and less than the size of the collection.");
+        public static void ThrowArgumentOutOfRange(string paramName = "index") =>
+            throw new ArgumentOutOfRangeException(paramName, paramName + " Must be non-negative and less than the size of the collection.");
 
         [DoesNotReturn]
         public static void ThrowArgumentNull(string parameterName) =>
