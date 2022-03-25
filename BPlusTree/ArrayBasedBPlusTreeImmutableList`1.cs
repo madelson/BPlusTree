@@ -11,7 +11,7 @@ namespace BPlusTree
 {
     using InternalEntry = ArrayBasedBPlusTreeImmutableListInternalEntry;
 
-    public sealed partial class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>
+    public sealed partial class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>, IList<T>
     {
         public static ArrayBasedBPlusTreeImmutableList<T> Empty { get; } = new(Array.Empty<LeafEntry>(), 0);
 
@@ -490,6 +490,10 @@ namespace BPlusTree
             get => (MaxInternalNodeSize / 2) + 1;
         }
 
+        public bool IsReadOnly => throw new NotImplementedException();
+
+        T IList<T>.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
         private struct LeafEntry { public T Item; }
 
         [Conditional("DEBUG")]
@@ -637,5 +641,41 @@ namespace BPlusTree
         }
 
         IImmutableList<T> IImmutableList<T>.SetItem(int index, T value) => SetItem(index, value);
+
+        public int IndexOf(T item) => IndexOf(item, 0, _count, null);
+
+        void IList<T>.Insert(int index, T item) => throw new NotSupportedException();
+
+        void IList<T>.RemoveAt(int index) => throw new NotSupportedException();
+
+        void ICollection<T>.Add(T item) => throw new NotSupportedException();
+
+        void ICollection<T>.Clear() => throw new NotSupportedException();
+
+        public bool Contains(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void CopyTo(T[] array, int arrayIndex)
+        {
+            if (array is null) { ThrowHelper.ThrowArgumentNull(nameof(array)); }
+            if ((uint)arrayIndex >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(arrayIndex)); }
+            // todo different error for this case probably
+            if (arrayIndex + _count > array.Length) { ThrowHelper.ThrowArgumentOutOfRange(nameof(array)); }
+
+            var state = (array, arrayIndex);
+            ScanForward(_root, CopyToHelper, startIndex: 0, ref state);
+
+            static bool CopyToHelper(ReadOnlySpan<T> items, ref (T[] Array, int Index) state)
+            {
+                // todo can't handle covariant T[]; need special case for this
+                items.CopyTo(state.Array.AsSpan(state.Index));
+                state.Index += items.Length;
+                return false;
+            }
+        }
+
+        bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
     }
 }

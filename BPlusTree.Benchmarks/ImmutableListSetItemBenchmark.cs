@@ -13,7 +13,7 @@ namespace BPlusTree.Benchmarks
     [GenericTypeArguments(typeof(string))]
     [MemoryDiagnoser]
     [DisassemblyDiagnoser]
-    public class ImmutableListSetItemBenchmark<T> where T : IComparable<T>
+    public class ImmutableListSetItemBenchmark<T> : IComparisonBenchmark<T> where T : IComparable<T>
     {
         [Params(5, 50, 512, 10_000)]
         public int Size;
@@ -27,7 +27,7 @@ namespace BPlusTree.Benchmarks
         public void SetUpImmutableList() => SetUpHelper(ref _immutableList, System.Collections.Immutable.ImmutableList.CreateRange<T>);
 
         [Benchmark(Baseline = true)]
-        public object ImmutableList()
+        public ImmutableList<T> ImmutableList()
         {
             var immutableList = _immutableList!;
             foreach (var (index, item) in _sets)
@@ -41,7 +41,7 @@ namespace BPlusTree.Benchmarks
         public void SetUpArrayBasedImmutableList() => SetUpHelper(ref _arrayBasedImmutableList, ArrayBasedBPlusTreeImmutableList.CreateRange<T>);
 
         [Benchmark]
-        public object ArrayBasedImmutableList()
+        public ArrayBasedBPlusTreeImmutableList<T> ArrayBasedImmutableList()
         {
             var immutableList = _arrayBasedImmutableList!;
             foreach (var (index, item) in _sets)
@@ -55,7 +55,7 @@ namespace BPlusTree.Benchmarks
         public void SetUpTunnelVisionImmutableList() => SetUpHelper(ref _tunnelVisionImmutableList, ImmutableTreeList.CreateRange<T>);
 
         [Benchmark]
-        public object TunnelVisionImmutableList()
+        public ImmutableTreeList<T> TunnelVisionImmutableList()
         {
             var immutableList = _tunnelVisionImmutableList!;
             foreach (var (index, item) in _sets)

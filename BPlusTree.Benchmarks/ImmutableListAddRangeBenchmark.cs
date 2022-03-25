@@ -13,7 +13,7 @@ namespace BPlusTree.Benchmarks
     [GenericTypeArguments(typeof(string))]
     [MemoryDiagnoser]
     [DisassemblyDiagnoser]
-    public class ImmutableListAddRangeBenchmark<T> where T : IComparable<T>
+    public class ImmutableListAddRangeBenchmark<T> : IComparisonBenchmark<T> where T : IComparable<T>
     {
         [Params(50, 10_000)]
         public int Size;
@@ -43,7 +43,7 @@ namespace BPlusTree.Benchmarks
             SetUpHelper(ref _immutableList, System.Collections.Immutable.ImmutableList.CreateRange<T>);
 
         [Benchmark(Baseline = true)]
-        public object ImmutableList() =>
+        public ImmutableList<T> ImmutableList() =>
             _immutableList!.AddRange(_items!);
 
         [GlobalSetup(Target = nameof(ArrayBasedImmutableList))]
@@ -51,7 +51,7 @@ namespace BPlusTree.Benchmarks
             SetUpHelper(ref _arrayBasedImmutableList, ArrayBasedBPlusTreeImmutableList.CreateRange<T>);
 
         [Benchmark]
-        public object ArrayBasedImmutableList() =>
+        public ArrayBasedBPlusTreeImmutableList<T> ArrayBasedImmutableList() =>
             _arrayBasedImmutableList!.AddRange(_items!);
 
         [GlobalSetup(Target = nameof(TunnelVisionImmutableList))]
@@ -59,7 +59,7 @@ namespace BPlusTree.Benchmarks
             SetUpHelper(ref _tunnelVisionImmutableList, ImmutableTreeList.CreateRange<T>);
 
         [Benchmark]
-        public object TunnelVisionImmutableList() =>
+        public ImmutableTreeList<T> TunnelVisionImmutableList() =>
             _tunnelVisionImmutableList!.AddRange(_items!);
     }
 }

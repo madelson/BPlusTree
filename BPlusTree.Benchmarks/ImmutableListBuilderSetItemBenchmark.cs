@@ -13,7 +13,7 @@ namespace BPlusTree.Benchmarks
     [GenericTypeArguments(typeof(string))]
     [MemoryDiagnoser]
     [DisassemblyDiagnoser]
-    public class ImmutableListBuilderSetItemBenchmark<T> where T : IComparable<T>
+    public class ImmutableListBuilderSetItemBenchmark<T> : IComparisonBenchmark<T> where T : IComparable<T>
     {
         [Params(5, 50, 512, 10_000)]
         public int Size;

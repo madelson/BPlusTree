@@ -181,5 +181,36 @@ namespace BPlusTree.Tests
             Assert.AreEqual(5, list.IndexOf("5", startIndex: 2, count: 4));
             Assert.AreEqual(-1, list.IndexOf("30", startIndex: 20, count: 9));
         }
+
+        [Test]
+        public void TestCopyTo()
+        {
+            var sequence = Enumerable.Range(0, 100).Reverse().ToArray();
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(sequence);
+            var array = new int[sequence.Length + 1];
+            list.CopyTo(array, 1);
+            CollectionAssert.AreEqual(new[] { 0 }.Concat(sequence), array);
+        }
+
+#if NET
+        [Test]
+        public void TestDoesNotAllocate()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
+
+            AssertDoesNotAllocate(() => list.IndexOf(900));
+            var array = new int[list.Count];
+            AssertDoesNotAllocate(() => list.CopyTo(array, 0));
+        }
+
+        private static void AssertDoesNotAllocate(Action action)
+        {
+            action(); // warmup
+
+            long allocated = GC.GetAllocatedBytesForCurrentThread();
+            action();
+            Assert.AreEqual(0, GC.GetAllocatedBytesForCurrentThread() - allocated);
+        }
+#endif
     }
 }

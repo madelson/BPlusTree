@@ -13,7 +13,7 @@ namespace BPlusTree.Benchmarks
     [GenericTypeArguments(typeof(string))]
     [MemoryDiagnoser]
     [DisassemblyDiagnoser]
-    public class ImmutableListInsertBenchmark<T> where T : IComparable<T>
+    public class ImmutableListInsertBenchmark<T> : IComparisonBenchmark<T> where T : IComparable<T>
     {
         [Params(5, 50, 512, 10_000)]
         public int Size;
@@ -34,7 +34,7 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark(Baseline = true)]
-        public object ImmutableList()
+        public ImmutableList<T> ImmutableList()
         {
             ImmutableList<T> immutableList = ImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
@@ -45,7 +45,7 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark]
-        public object ArrayBasedImmutableList()
+        public ArrayBasedBPlusTreeImmutableList<T> ArrayBasedImmutableList()
         {
             ArrayBasedBPlusTreeImmutableList<T> arrayBasedImmutableList = ArrayBasedBPlusTreeImmutableList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
@@ -56,7 +56,7 @@ namespace BPlusTree.Benchmarks
         }
 
         [Benchmark]
-        public object TunnelVisionImmutableList()
+        public ImmutableTreeList<T> TunnelVisionImmutableList()
         {
             ImmutableTreeList<T> tunnelVisionImmutableList = ImmutableTreeList<T>.Empty;
             foreach (var (index, item) in _insertionIndices!)
