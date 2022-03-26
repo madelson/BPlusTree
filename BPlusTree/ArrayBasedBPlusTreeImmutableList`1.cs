@@ -570,32 +570,9 @@ namespace BPlusTree
             if (index + count > _count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(index)} + {nameof(count)}"); }
 
             var state = (Remaining: count, item, equalityComparer ?? EqualityComparer<T>.Default);
-            return ScanForward(_root, IndexOfHelper, index, ref state)
+            return ScanForward(_root, IndexOfDelegate.Instance, index, ref state)
                 ? (state.Remaining < 0 ? -1 : index + (count - state.Remaining))
                 : -1;
-
-            static bool IndexOfHelper(ReadOnlySpan<T> items, ref (int Remaining, T Item, IEqualityComparer<T> Comparer) state)
-            {
-                for (var i = 0; i < items.Length; i++)
-                {
-                    if (i >= state.Remaining)
-                    {
-                        break;
-                    }
-                    if (state.Comparer.Equals(items[i], state.Item))
-                    {
-                        state.Remaining -= i;
-                        return true; // break
-                    }
-                }
-
-                if ((state.Remaining -= items.Length) <= 0)
-                {
-                    state.Remaining = -1;
-                    return true; // break
-                }
-                return false; // continue
-            }
         }
 
         IImmutableList<T> IImmutableList<T>.Insert(int index, T item) => Insert(index, item);
@@ -652,10 +629,7 @@ namespace BPlusTree
 
         void ICollection<T>.Clear() => throw new NotSupportedException();
 
-        public bool Contains(T item)
-        {
-            throw new NotImplementedException();
-        }
+        public bool Contains(T item) => IndexOf(item) >= 0;
 
         public void CopyTo(T[] array, int arrayIndex)
         {
@@ -665,15 +639,7 @@ namespace BPlusTree
             if (arrayIndex + _count > array.Length) { ThrowHelper.ThrowArgumentOutOfRange(nameof(array)); }
 
             var state = (array, arrayIndex);
-            ScanForward(_root, CopyToHelper, startIndex: 0, ref state);
-
-            static bool CopyToHelper(ReadOnlySpan<T> items, ref (T[] Array, int Index) state)
-            {
-                // todo can't handle covariant T[]; need special case for this
-                items.CopyTo(state.Array.AsSpan(state.Index));
-                state.Index += items.Length;
-                return false;
-            }
+            ScanForward(_root, CopyToDelegte.Instance, startIndex: 0, ref state);
         }
 
         bool ICollection<T>.Remove(T item) => throw new NotSupportedException();

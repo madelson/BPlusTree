@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -192,6 +193,14 @@ namespace BPlusTree.Tests
             CollectionAssert.AreEqual(new[] { 0 }.Concat(sequence), array);
         }
 
+        [Test]
+        public void TestContains()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange("abc");
+            Assert.True(list.Contains('b'));
+            Assert.False(list.Contains('d'));
+        }
+
 #if NET
         [Test]
         public void TestDoesNotAllocate()
@@ -199,17 +208,23 @@ namespace BPlusTree.Tests
             var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
 
             AssertDoesNotAllocate(() => list.IndexOf(900));
+            AssertDoesNotAllocate(() => list.Contains(800));
             var array = new int[list.Count];
             AssertDoesNotAllocate(() => list.CopyTo(array, 0));
         }
 
         private static void AssertDoesNotAllocate(Action action)
         {
-            action(); // warmup
+            GetBytes(); // warmup
+            Assert.AreEqual(0, GetBytes());
 
-            long allocated = GC.GetAllocatedBytesForCurrentThread();
-            action();
-            Assert.AreEqual(0, GC.GetAllocatedBytesForCurrentThread() - allocated);
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            long GetBytes()
+            {
+                long allocated = GC.GetAllocatedBytesForCurrentThread();
+                action();
+                return GC.GetAllocatedBytesForCurrentThread() - allocated;
+            }
         }
 #endif
     }
