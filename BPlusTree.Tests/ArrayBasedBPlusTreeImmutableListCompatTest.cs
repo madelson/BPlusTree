@@ -39,6 +39,22 @@ namespace BPlusTree.Tests
                 return ToImmutable(builder);
             });
 
+        [Test]
+        public void TestRemoveAtCompat() =>
+            TestCompat((l, r) => l.RemoveAt(r.Next(l.Count)));
+
+        [Test]
+        public void TestRemoveRangeCompat() =>
+            TestCompat((l, r) =>
+            {
+                if (l.Count == 0)
+                {
+                    l = l.AddRange(Enumerable.Range(r.Next(10000), r.Next(100, 1000)));
+                }
+                var index = r.Next(l.Count);
+                return l.RemoveRange(index, r.Next(l.Count - index + 1));
+            });
+
         private static void TestCompat(Func<IImmutableList<int>, Random, IImmutableList<int>> transform)
         {
             var sizes = new[] { 5, 50, 500 };

@@ -153,6 +153,62 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestRemoveAt()
+        {
+            const int Count = 500;
+            ArrayBasedBPlusTreeImmutableList<int> list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, Count));
+            for (var i = list.Count - 1; i >= 0; i -= 2)
+            {
+                list = list.RemoveAt(i);
+            }
+            CollectionAssert.AreEqual(Enumerable.Range(0, Count / 2).Select(i => 2 * i), list);
+        }
+
+        [Test]
+        public void TestRemoveAtLast()
+        {
+            ArrayBasedBPlusTreeImmutableList<int> list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 33));
+            CollectionAssert.AreEqual(Enumerable.Range(0, 32), list.RemoveAt(32));
+        }
+
+        [Test]
+        public void TestRemoveAtEdgeCase()
+        {
+            ArrayBasedBPlusTreeImmutableList<int> list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 10_000));
+
+            var random = new Random(12345);
+            var removes = new List<int>();
+            for (var i = list.Count; i > 0; --i)
+            {
+                removes.Add(random.Next(i));
+            }
+
+            foreach (var index in removes)
+            {
+                list = list.RemoveAt(index);
+            }
+
+            Assert.AreSame(ArrayBasedBPlusTreeImmutableList<int>.Empty, list);
+        }
+
+        [Test]
+        public void TestRemoveRange()
+        {
+            ArrayBasedBPlusTreeImmutableList<int> list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
+            
+            CollectionAssert.AreEqual(new[] { 0, 999 }, list.RemoveRange(1, 998));
+
+            CollectionAssert.AreEqual(Enumerable.Range(500, 500), list.RemoveRange(0, 500));
+
+            CollectionAssert.AreEqual(Enumerable.Range(0, 500), list.RemoveRange(500, 500));
+
+            CollectionAssert.AreEqual(Enumerable.Range(0, 237).Concat(Enumerable.Range(387, 1000 - 387)), list.RemoveRange(237, 150));
+
+            list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 658));
+            CollectionAssert.AreEqual(Enumerable.Range(0, 481).Concat(Enumerable.Range(481 + 133, 658 - 481 - 133)), list.RemoveRange(481, 133));
+        }
+
+        [Test]
         public void TestBuilderSetItem()
         {
             ArrayBasedBPlusTreeImmutableList<string> list = ArrayBasedBPlusTreeImmutableList.CreateRange(new[] { "a", "b" });

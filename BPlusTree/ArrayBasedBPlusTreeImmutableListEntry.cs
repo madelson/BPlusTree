@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace BPlusTree
 {
+    [DebuggerDisplay("CumulativeChildCount = {CumulativeChildCount}")]
     internal struct ArrayBasedBPlusTreeImmutableListInternalEntry
     {
         private const int CumulativeChildCountMask = int.MaxValue;

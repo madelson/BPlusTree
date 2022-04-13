@@ -438,6 +438,217 @@ namespace BPlusTree
             }
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> RemoveAt(int index)
+        {
+            if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            return RemoveRangeInternal(index, count: 1);
+        }
+
+        public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(int index, int count)
+        {
+            if ((uint)index > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            if (count < 0 || index + count > _count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+
+            return count == 0 ? this : RemoveRangeInternal(index, count);
+        }
+
+        private ArrayBasedBPlusTreeImmutableList<T> RemoveRangeInternal(int index, int count)
+        {
+            if (count == _count) { return Empty; }
+
+            Array updated = RemoveRange(_root, index, count, isLeadingEdge: true);
+
+            // collapse now-extraneous levels
+            while (updated.Length == 1 && updated.GetType() == typeof(InternalEntry[]))
+            {
+                updated = Unsafe.As<InternalEntry[]>(updated)[0].Child;
+            }
+
+            return new(updated, _count - count);
+        }
+
+        private static Array RemoveRange(Array node, int index, int count, bool isLeadingEdge)
+        {
+            Debug.Assert(index + count <= GetCount(node));
+            Debug.Assert(count != 0 && count < GetCount(node));
+
+            if (node.GetType() == typeof(InternalEntry[]))
+            {
+                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+
+                // identify the range of affected indices
+                var low = 0;
+                while (internalNode[low].CumulativeChildCount <= index)
+                {
+                    ++low;
+                }
+                var high = low;
+                while (internalNode[high].CumulativeChildCount < index + count)
+                {
+                    ++high;
+                }
+
+                // recurse on the upper and lower indices of the range if needed
+                int lowRelativeIndex = low == 0 ? index : index - internalNode[low - 1].CumulativeChildCount;
+                Array? updatedLow = lowRelativeIndex > 0 || (low == high && internalNode[low].CumulativeChildCount > index + count)
+                    ? RemoveRange(
+                        node: internalNode[low].Child,
+                        index: lowRelativeIndex,
+                        count: low != high ? Math.Min(internalNode[low].CumulativeChildCount - index, count) : count,
+                        isLeadingEdge: isLeadingEdge && low == internalNode.Length - 1)
+                    : null;
+                Array? updatedHigh = null;
+                if (high != low)
+                {
+                    var highCount = count - (internalNode[high - 1].CumulativeChildCount - index);
+                    if (highCount < internalNode[high].CumulativeChildCount - internalNode[high - 1].CumulativeChildCount)
+                    {
+                        updatedHigh = RemoveRange(
+                            node: internalNode[high].Child,
+                            index: 0,
+                            count: highCount,
+                            isLeadingEdge: isLeadingEdge && high == internalNode.Length - 1);
+                    }
+                }
+
+                // restore node size invariants if needed by merging/redistributing with neighbors
+                Array? beforeLow = low > 0 ? internalNode[low - 1].Child : null,
+                    afterHigh = high < internalNode.Length - 1 ? internalNode[high + 1].Child : null;
+                if (updatedLow != null || updatedHigh != null)
+                {
+                    var isAfterHighLeadingEdge = high + 2 >= internalNode.Length;
+                    RestoreNodeSizeInvariants(ref beforeLow, ref updatedLow, ref updatedHigh, ref afterHigh, isAfterHighLeadingEdge);
+                }
+
+                // rebuild the node
+                var updatedLength = Math.Max(low - 1, 0) + Math.Max(internalNode.Length - (high + 1) - 1, 0);
+                if (beforeLow != null) { ++updatedLength; }
+                if (updatedLow != null) { ++updatedLength; }
+                if (updatedHigh != null) { ++updatedLength; }
+                if (afterHigh != null) { ++updatedLength; }
+                var updated = new InternalEntry[updatedLength];
+                var i = 0;
+                for (; i < low - 1; ++i)
+                {
+                    updated[i].Child = internalNode[i].Child;
+                }
+                if (beforeLow != null) { updated[i++].Child = beforeLow; }
+                if (updatedLow != null) { updated[i++].Child = updatedLow; }
+                if (updatedHigh != null) { updated[i++].Child = updatedHigh; }
+                if (afterHigh != null) { updated[i++].Child = afterHigh; }
+                for (; i < updated.Length; ++i)
+                {
+                    updated[i].Child = internalNode[i + (internalNode.Length - updated.Length)].Child;
+                }
+                SetCumulativeChildCounts(updated);
+                return updated;
+            }
+            else
+            {
+                LeafEntry[] leafNode = Unsafe.As<LeafEntry[]>(node);
+                var updated = new LeafEntry[leafNode.Length - count];
+                leafNode.AsSpan(0, index).CopyTo(updated);
+                leafNode.AsSpan(index + count).CopyTo(updated.AsSpan(index));
+                return updated;
+            }
+        }
+
+        private static void RestoreNodeSizeInvariants(ref Array? a, ref Array? b, ref Array? c, ref Array? d, bool isLeadingEdge)
+        {
+            Debug.Assert(b != null || c != null);
+
+            bool isInternal = (b ?? c)!.GetType() == typeof(InternalEntry[]);
+            MergeLeft(ref c, ref d, ref isLeadingEdge, isInternal);
+            MergeLeft(ref b, ref c, ref isLeadingEdge, isInternal);
+            MergeLeft(ref a, ref b, ref isLeadingEdge, isInternal);
+
+            Debug.Assert(a != null);
+
+            static void MergeLeft(ref Array? a, ref Array? b, ref bool isLeadingEdge, bool isInternal)
+            {
+                if (b is null) 
+                { 
+                    return; 
+                }
+                if (a is null) 
+                { 
+                    a = b;
+                    b = null;
+                    return;
+                }
+
+                int maxNodeSize = isInternal ? MaxInternalNodeSize : MaxLeafNodeSize;
+                int minNodeSize = maxNodeSize / 2;
+                if (a.Length < minNodeSize || (!isLeadingEdge && b.Length < minNodeSize))
+                {
+                    int totalLength = a.Length + b.Length;
+                    if (totalLength <= maxNodeSize)
+                    {
+                        Array combined = isInternal ? new InternalEntry[totalLength] : new LeafEntry[totalLength];
+                        a.CopyTo(combined, 0);
+                        b.CopyTo(combined, a.Length);
+                        if (isInternal)
+                        {
+                            var aCumulativeChildCount = Unsafe.As<InternalEntry[]>(a)[a.Length - 1].CumulativeChildCount;
+                            for (var i = a.Length; i < combined.Length; ++i)
+                            {
+                                Unsafe.As<InternalEntry[]>(combined)[i].CumulativeChildCount += aCumulativeChildCount;
+                            }
+                        }
+                        a = combined;
+                        b = null;
+                        return;
+                    }
+
+                    Array newA, newB;
+                    int bLength = isLeadingEdge ? totalLength - maxNodeSize : minNodeSize;
+                    if (isInternal)
+                    {
+                        newA = new InternalEntry[totalLength - bLength];
+                        newB = new InternalEntry[bLength];
+                    }
+                    else
+                    {
+                        newA = new LeafEntry[totalLength - bLength];
+                        newB = new LeafEntry[bLength];
+                    }
+                    Debug.Assert(newA.Length >= minNodeSize && newB.Length >= (isLeadingEdge ? 0 : minNodeSize));
+
+                    Array.Copy(a, newA, length: Math.Min(a.Length, newA.Length));
+                    var aDifference = a.Length - newA.Length;
+                    if (aDifference > 0)
+                    {
+                        Array.Copy(a, newA.Length, newB, 0, length: aDifference);
+                        Array.Copy(b, 0, newB, aDifference, b.Length);
+                    }
+                    else
+                    {
+                        Array.Copy(b, 0, newA, a.Length, -aDifference);
+                        Array.Copy(b, -aDifference, newB, 0, newB.Length);
+                    }
+
+                    if (isInternal)
+                    {
+                        SetCumulativeChildCounts(Unsafe.As<InternalEntry[]>(newA));
+                        SetCumulativeChildCounts(Unsafe.As<InternalEntry[]>(newB));
+                    }
+                    a = newA;
+                    b = newB;
+                }
+
+                isLeadingEdge = false;
+            }
+        }
+
+        private static void SetCumulativeChildCounts(InternalEntry[] node)
+        {
+            var lastCumulativeChildCount = 0;
+            for (var i = 0; i < node.Length; ++i)
+            {
+                lastCumulativeChildCount = node[i].CumulativeChildCount = lastCumulativeChildCount + GetCount(node[i].Child);
+            }
+        }
+
         // todo replace with struct enumerator
         public IEnumerator<T> GetEnumerator()
         {
@@ -494,17 +705,18 @@ namespace BPlusTree
 
         T IList<T>.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
+        [DebuggerDisplay("{Item}")]
         private struct LeafEntry { public T Item; }
 
         [Conditional("DEBUG")]
         private void AssertValid()
         {
-            AssertValid(_root);
+            AssertValid(_root, isLeadingEdge: true);
             Debug.Assert(Count == GetCount(_root));
         }
 
         [Conditional("DEBUG")]
-        private static void AssertValid(Array node)
+        private static void AssertValid(Array node, bool isLeadingEdge)
         {
             if (node is LeafEntry[] leafNode)
             {
@@ -513,11 +725,14 @@ namespace BPlusTree
             }
 
             var internalNode = (InternalEntry[])node;
+            Debug.Assert(internalNode.Length >= (isLeadingEdge ? 1 : (MaxInternalNodeSize / 2)));
             Debug.Assert(internalNode.Length <= MaxInternalNodeSize);
+            Type childType = internalNode[0].Child.GetType();
             for (var i = 0; i < internalNode.Length; ++i)
             {
                 Debug.Assert(!internalNode[i].IsChildMutable);
-                AssertValid(internalNode[i].Child);
+                Debug.Assert(internalNode[i].Child.GetType() == childType);
+                AssertValid(internalNode[i].Child, isLeadingEdge: i == internalNode.Length - 1);
                 Debug.Assert(internalNode[i].CumulativeChildCount - (i > 0 ? internalNode[i - 1].CumulativeChildCount : 0) == GetCount(internalNode[i].Child));
             }
         }
@@ -597,20 +812,14 @@ namespace BPlusTree
             throw new NotImplementedException();
         }
 
-        IImmutableList<T> IImmutableList<T>.RemoveAt(int index)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.RemoveAt(int index) => RemoveAt(index);
 
         IImmutableList<T> IImmutableList<T>.RemoveRange(IEnumerable<T> items, IEqualityComparer<T>? equalityComparer)
         {
             throw new NotImplementedException();
         }
 
-        IImmutableList<T> IImmutableList<T>.RemoveRange(int index, int count)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.RemoveRange(int index, int count) => RemoveRange(index, count);
 
         IImmutableList<T> IImmutableList<T>.Replace(T oldValue, T newValue, IEqualityComparer<T>? equalityComparer)
         {
