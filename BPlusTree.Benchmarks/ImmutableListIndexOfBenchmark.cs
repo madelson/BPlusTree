@@ -25,7 +25,7 @@ namespace BPlusTree.Benchmarks
         public void SetUpImmutableList() =>
             _immutableList = System.Collections.Immutable.ImmutableList.CreateRange(ValuesGenerator.UniqueValues<T>(Size));
 
-        [Benchmark]
+        [Benchmark(Baseline = true)]
         public int ImmutableList() => _immutableList!.IndexOf(default!, 0, Size, null);
 
         [GlobalSetup(Target = nameof(ArrayBasedImmutableList))]
