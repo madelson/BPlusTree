@@ -27,7 +27,10 @@ void Main()
 	sb.Append("| ---- |")
 		.Append(string.Join("|", Types.Select(_ => " ---- | ---- ")))
 		.AppendLine("|");
-	foreach (var benchmark in new[] { "Index", "Add", "Insert", "CreateRange", "AddRange", "SetItem", "BuilderSetItem" })
+	//var benchmarks = new[] { "Index", "Add", "Insert", "CreateRange", "AddRange", "SetItem", "BuilderSetItem" };
+	//var benchmarks = new[] { "RemoveAt", "RemoveRange", "IndexOf", "CopyTo" };
+	var benchmarks = new[] { "Enumeration" };
+	foreach (var benchmark in benchmarks)
 	{
 		foreach (var elementType in new[] { "Int32", "String" })
 		{

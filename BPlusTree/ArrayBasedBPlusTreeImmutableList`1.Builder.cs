@@ -28,6 +28,8 @@ namespace BPlusTree
                 _count = count;
             }
 
+            internal int Version => _version;
+
             public int Count => _count;
 
             public T this[int index] 
@@ -155,16 +157,9 @@ namespace BPlusTree
                 throw new NotImplementedException();
             }
 
-            public IEnumerator<T> GetEnumerator()
-            {
-                int version = _version;
-                for (var i = 0; i < _count; ++i)
-                {
-                    if (version != _version) { ThrowHelper.ThrowVersionChanged(); }
-                    yield return this[i];
-                }
-            }
+            public Enumerator GetEnumerator() => new(_root, this);
 
+            IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
             public int IndexOf(T item)

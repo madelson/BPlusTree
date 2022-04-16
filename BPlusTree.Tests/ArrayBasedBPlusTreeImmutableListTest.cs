@@ -257,6 +257,56 @@ namespace BPlusTree.Tests
             Assert.False(list.Contains('d'));
         }
 
+        [Test]
+        public void TestEnumerator()
+        {
+            CollectionAssert.AreEqual(Enumerable.Empty<string>(), ArrayBasedBPlusTreeImmutableList<string>.Empty.Select(i => i + i));
+
+            var sequence = Enumerable.Range(0, 20).OrderBy(i => i % 4);
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(sequence);
+            CollectionAssert.AreEqual(sequence, list.Select(i => i));
+
+            sequence = Enumerable.Range(0, 12345).OrderByDescending(i => i % 177);
+            list = ArrayBasedBPlusTreeImmutableList.CreateRange(sequence);
+            CollectionAssert.AreEqual(sequence, list.Select(i => i));
+        }
+
+        [Test]
+        public void TestEnumeratorEdgeCases()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(1, 100).Select(i => i.ToString()));
+            using var enumerator = list.GetEnumerator();
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+
+            Assert.IsTrue(enumerator.MoveNext());
+            Assert.AreEqual("1", enumerator.Current);
+
+            while (enumerator.MoveNext()) ;
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+            Assert.IsFalse(enumerator.MoveNext());
+
+            enumerator.Dispose();
+            Assert.Throws<ObjectDisposedException>(() => { var _ = enumerator.Current; });
+            Assert.Throws<ObjectDisposedException>(() => enumerator.MoveNext());
+            Assert.Throws<ObjectDisposedException>(() => enumerator.Reset());
+        }
+
+        [Test]
+        public void TestEnumeratorReset()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(1, 1000).Select(i => i.ToString()));
+            using var enumerator = list.GetEnumerator();
+
+            for (var i = 0; i < 503; ++i) { Assert.IsTrue(enumerator.MoveNext()); }
+            Assert.AreEqual("503", enumerator.Current);
+
+            enumerator.Reset();
+            Assert.Throws<InvalidOperationException>(() => { var _ = enumerator.Current; });
+
+            for (var i = 0; i < 797; ++i) { Assert.IsTrue(enumerator.MoveNext()); }
+            Assert.AreEqual("797", enumerator.Current);
+        }
+
 #if NET
         [Test]
         public void TestDoesNotAllocate()
@@ -267,6 +317,11 @@ namespace BPlusTree.Tests
             AssertDoesNotAllocate(() => list.Contains(800));
             var array = new int[list.Count];
             AssertDoesNotAllocate(() => list.CopyTo(array, 0));
+            var counter = 0;
+            AssertDoesNotAllocate(() =>
+            {
+                foreach (var item in list) { ++counter; }
+            });
         }
 
         private static void AssertDoesNotAllocate(Action action)

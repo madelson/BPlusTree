@@ -20,5 +20,9 @@ namespace BPlusTree
         [DoesNotReturn]
         public static void ThrowVersionChanged() =>
             throw new InvalidOperationException("Collection was modified during enumeration");
+
+        [DoesNotReturn]
+        public static void ThrowObjectDisposed<T>(T value) =>
+            throw new ObjectDisposedException((value?.GetType() ?? typeof(T)).ToString());
     }
 }

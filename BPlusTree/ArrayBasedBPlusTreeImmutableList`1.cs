@@ -649,14 +649,6 @@ namespace BPlusTree
             }
         }
 
-        // todo replace with struct enumerator
-        public IEnumerator<T> GetEnumerator()
-        {
-            for (var i = 0; i < _count; ++i) { yield return this[i]; }
-        }
-
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
-
         private static int GetCount(Array node)
         {
             if (node.GetType() == typeof(InternalEntry[]))
