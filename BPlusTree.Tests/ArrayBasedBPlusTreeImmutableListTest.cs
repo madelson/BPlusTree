@@ -350,6 +350,14 @@ namespace BPlusTree.Tests
             Assert.IsFalse(list.Exists(i => i == guid));
         }
 
+        [Test]
+        public void TestTrueForAll()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 345));
+            Assert.IsTrue(list.TrueForAll(i => i < 345));
+            Assert.IsFalse(list.TrueForAll(i => i < 344));
+        }
+
 #if NET
         [Test]
         public void TestDoesNotAllocate()
@@ -362,6 +370,7 @@ namespace BPlusTree.Tests
             AssertDoesNotAllocate(() => list.FindIndex(25, 750, i => i % 237 == 0));
             AssertDoesNotAllocate(() => list.ForEach(_ => { }));
             AssertDoesNotAllocate(() => list.Exists(i => i == 1001));
+            AssertDoesNotAllocate(() => list.TrueForAll(i => i < 1001));
             var array = new int[list.Count];
             AssertDoesNotAllocate(() => list.CopyTo(array, 0));
             var counter = 0;

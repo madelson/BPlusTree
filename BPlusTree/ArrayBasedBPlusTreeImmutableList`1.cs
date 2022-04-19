@@ -742,6 +742,7 @@ namespace BPlusTree
 
         private delegate bool Scanner<TState>(ReadOnlySpan<T> items, ref TState state);
 
+        // todo we could incorporate count as well as startIndex here
         private static bool ScanForward<TState>(Array node, Scanner<TState> scanner, int startIndex, ref TState state)
         {
             if (node.GetType() == typeof(InternalEntry[]))
@@ -976,7 +977,9 @@ namespace BPlusTree
 
         public bool TrueForAll(Predicate<T> match)
         {
-            throw new NotImplementedException();
+            if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
+
+            return !ScanForward(_root, TrueForAllDelegate.Instance, startIndex: 0, ref match);
         }
 
         public int BinarySearch(T item)

@@ -89,5 +89,23 @@ namespace BPlusTree
                 return false;
             }
         }
+
+        private static class TrueForAllDelegate
+        {
+            public static readonly Scanner<Predicate<T>> Instance = TrueForAllHelper;
+
+            private static bool TrueForAllHelper(ReadOnlySpan<T> items, ref Predicate<T> state)
+            {
+                Predicate<T> match = state;
+                for (var i = 0; i < items.Length; ++i)
+                {
+                    if (!match(items[i])) 
+                    { 
+                        return true; 
+                    }
+                }
+                return false;
+            }
+        }
     }
 }
