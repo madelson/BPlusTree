@@ -74,5 +74,20 @@ namespace BPlusTree
                 return false;
             }
         }
+
+        private static class ForEachDelegate
+        {
+            public static readonly Scanner<Action<T>> Instance = ForEachHelper;
+
+            private static bool ForEachHelper(ReadOnlySpan<T> items, ref Action<T> state)
+            {
+                Action<T> action = state;
+                for (var i = 0; i < items.Length; ++i)
+                {
+                    action(items[i]);
+                }
+                return false;
+            }
+        }
     }
 }

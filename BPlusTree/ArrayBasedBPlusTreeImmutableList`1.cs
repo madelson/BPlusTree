@@ -865,6 +865,7 @@ namespace BPlusTree
                 : ArrayBasedBPlusTreeImmutableList.CreateRange(this.Select(converter));
         }
 
+        // todo is this really worth the trouble?
         private static Array ConvertAllSameNodeSize<TOutput>(Array node, Func<T, TOutput> converter)
         {
             if (node.GetType() == typeof(InternalEntry[]))
@@ -893,7 +894,9 @@ namespace BPlusTree
 
         public void ForEach(Action<T> action)
         {
-            throw new NotImplementedException();
+            if (action is null) { ThrowHelper.ThrowArgumentNull(nameof(action)); }
+
+            ScanForward(_root, ForEachDelegate.Instance, startIndex: 0, ref action);
         }
 
         public ArrayBasedBPlusTreeImmutableList<T> GetRange(int index, int count)
