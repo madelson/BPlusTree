@@ -307,6 +307,15 @@ namespace BPlusTree.Tests
             Assert.AreEqual("797", enumerator.Current);
         }
 
+        [Test]
+        public void TestFind()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000).Select(i => (i * i).ToString()));
+            Assert.IsNull(list.Find(s => s.Length == 0));
+            Assert.AreEqual("49", list.Find(s => s.Length == 2 && s.StartsWith("4")));
+            Assert.AreEqual(list.ToList().FindIndex(100, 300, s => s[1] == s[2]), list.FindIndex(100, 300, s => s[1] == s[2]));
+        }
+
 #if NET
         [Test]
         public void TestDoesNotAllocate()
@@ -315,6 +324,8 @@ namespace BPlusTree.Tests
 
             AssertDoesNotAllocate(() => list.IndexOf(900));
             AssertDoesNotAllocate(() => list.Contains(800));
+            AssertDoesNotAllocate(() => list.Find(i => i == 500));
+            AssertDoesNotAllocate(() => list.FindIndex(25, 750, i => i % 237 == 0));
             var array = new int[list.Count];
             AssertDoesNotAllocate(() => list.CopyTo(array, 0));
             var counter = 0;

@@ -47,5 +47,32 @@ namespace BPlusTree
                 return false;
             }
         }
+
+        private static class FindDelegate
+        {
+            public static readonly Scanner<(Predicate<T> Predicate, int Count, int FoundIndex, T? FoundItem)> Instance = FindHelper;
+
+            private static bool FindHelper(ReadOnlySpan<T> items, ref (Predicate<T> Predicate, int Count, int FoundIndex, T? FoundItem) state)
+            {
+                int count = state.Count - state.FoundIndex;
+                if (count < items.Length)
+                {
+                    items = items.Slice(0, count);
+                }
+
+                for (var i = 0; i < items.Length; ++i)
+                {
+                    if (state.Predicate(items[i]))
+                    {
+                        state.FoundIndex += i;
+                        state.FoundItem = items[i];
+                        return true;
+                    }
+                }
+
+                state.FoundIndex += items.Length;
+                return false;
+            }
+        }
     }
 }

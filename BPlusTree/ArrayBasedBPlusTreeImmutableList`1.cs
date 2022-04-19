@@ -781,8 +781,8 @@ namespace BPlusTree
         public int IndexOf(T item, int index, int count, IEqualityComparer<T>? equalityComparer)
         {
             if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
-            if ((uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
-            if (index + count > _count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(index)} + {nameof(count)}"); }
+            if (count < 0) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+            if ((uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(index)} + {nameof(count)}"); }
 
             var state = (Remaining: count, item, equalityComparer ?? EqualityComparer<T>.Default);
             return ScanForward(_root, IndexOfDelegate.Instance, index, ref state)
@@ -880,9 +880,10 @@ namespace BPlusTree
             throw new NotImplementedException();
         }
 
-        public T? Find(Predicate<T> match)
+        public T? Find(Predicate<T> match) 
         {
-            throw new NotImplementedException();
+            Find(startIndex: 0, _count, match, out _, out var foundItem);
+            return foundItem;
         }
 
         public ArrayBasedBPlusTreeImmutableList<T> FindAll(Predicate<T> match)
@@ -890,19 +891,32 @@ namespace BPlusTree
             throw new NotImplementedException();
         }
 
-        public int FindIndex(Predicate<T> match)
-        {
-            throw new NotImplementedException();
-        }
+        public int FindIndex(Predicate<T> match) =>
+            Find(startIndex: 0, count: _count, match, out var foundIndex, out _) ? foundIndex : -1;
 
         public int FindIndex(int startIndex, Predicate<T> match)
         {
-            throw new NotImplementedException();
+            if ((uint)startIndex >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(startIndex)); }
+
+            return Find(startIndex, _count, match, out var foundIndex, out _) ? foundIndex : -1;
         }
 
         public int FindIndex(int startIndex, int count, Predicate<T> match)
         {
-            throw new NotImplementedException();
+            if ((uint)startIndex >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(startIndex)); }
+            if (count < 0) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+            if ((uint)startIndex + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(startIndex)} + {nameof(count)}"); }
+
+            return Find(startIndex, count, match, out var foundIndex, out _) ? foundIndex : -1;
+        }
+
+        private bool Find(int startIndex, int count, Predicate<T> match, out int foundIndex, out T? foundItem)
+        {
+            var state = (Predicate: match, Count: count, FoundIndex: startIndex, FoundItem: default(T));
+            bool result = ScanForward(_root, FindDelegate.Instance, startIndex, ref state);
+            foundIndex = state.FoundIndex;
+            foundItem = state.FoundItem;
+            return result;
         }
 
         public T? FindLast(Predicate<T> match)
