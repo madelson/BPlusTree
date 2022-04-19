@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -15,7 +16,7 @@ namespace BPlusTree
     {
         public Builder ToBuilder() => new(_root, _count);
 
-        public sealed class Builder : IList<T>
+        public sealed class Builder : IList<T>, IList, IOrderedCollection<T>, IImmutableListQueries<T>, IReadOnlyList<T>
         {
             private Array _root;
             private int _count;
@@ -65,6 +66,8 @@ namespace BPlusTree
                 }
             }
 
+            bool ICollection<T>.IsReadOnly => false;
+
             private Array? SetItem(Array node, bool isMutable, int index, T item)
             {
                 if (node.GetType() == typeof(InternalEntry[]))
@@ -105,8 +108,6 @@ namespace BPlusTree
 
                 return null;
             }
-
-            bool ICollection<T>.IsReadOnly => false;
 
             public ArrayBasedBPlusTreeImmutableList<T> ToImmutable()
             {
@@ -178,6 +179,138 @@ namespace BPlusTree
             }
 
             public void RemoveAt(int index)
+            {
+                throw new NotImplementedException();
+            }
+
+            #region IList members
+            bool IList.IsFixedSize => false;
+
+            bool IList.IsReadOnly => false;
+
+            bool ICollection.IsSynchronized => false;
+
+            object ICollection.SyncRoot => false;
+
+            object? IList.this[int index] { get => this[index]; set => this[index] = (T)value!; }
+
+            int IList.Add(object? value)
+            {
+                Add((T)value!);
+                return Count - 1;
+            }
+
+            bool IList.Contains(object? value) => IsCompatibleObject(value, out T cast) && Contains(cast);
+
+            int IList.IndexOf(object? value) => IsCompatibleObject(value, out T cast) ? IndexOf(cast) : -1;
+
+            void IList.Insert(int index, object? value) => Insert(index, (T)value!);
+
+            void IList.Remove(object? value)
+            {
+                if (IsCompatibleObject(value, out T cast))
+                {
+                    Remove(cast);
+                }
+            }
+
+            void ICollection.CopyTo(Array array, int index)
+            {
+                throw new NotImplementedException();
+            }
+            #endregion
+
+            public ArrayBasedBPlusTreeImmutableList<TOutput> ConvertAll<TOutput>(Func<T, TOutput> converter)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void ForEach(Action<T> action)
+            {
+                throw new NotImplementedException();
+            }
+
+            public ArrayBasedBPlusTreeImmutableList<T> GetRange(int index, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void CopyTo(T[] array)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void CopyTo(int index, T[] array, int arrayIndex, int count)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool Exists(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public T? Find(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public ArrayBasedBPlusTreeImmutableList<T> FindAll(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int FindIndex(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int FindIndex(int startIndex, Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int FindIndex(int startIndex, int count, Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public T? FindLast(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int FindLastIndex(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int FindLastIndex(int startIndex, Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int FindLastIndex(int startIndex, int count, Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool TrueForAll(Predicate<T> match)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int BinarySearch(T item)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int BinarySearch(T item, IComparer<T>? comparer)
+            {
+                throw new NotImplementedException();
+            }
+
+            public int BinarySearch(int index, int count, T item, IComparer<T>? comparer)
             {
                 throw new NotImplementedException();
             }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -11,7 +12,7 @@ namespace BPlusTree
 {
     using InternalEntry = ArrayBasedBPlusTreeImmutableListInternalEntry;
 
-    public sealed partial class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>, IList<T>
+    public sealed partial class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>, IList<T>, IList, IOrderedCollection<T>, IImmutableListQueries<T>, IStrongEnumerable<T, ArrayBasedBPlusTreeImmutableList<T>.Enumerator>
     {
         public static ArrayBasedBPlusTreeImmutableList<T> Empty { get; } = new(Array.Empty<LeafEntry>(), 0);
 
@@ -695,6 +696,13 @@ namespace BPlusTree
 
         public bool IsReadOnly => throw new NotImplementedException();
 
+        bool IList.IsFixedSize => throw new NotImplementedException();
+
+        bool ICollection.IsSynchronized => throw new NotImplementedException();
+
+        object ICollection.SyncRoot => throw new NotImplementedException();
+
+        object? IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         T IList<T>.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         [DebuggerDisplay("{Item}")]
@@ -844,5 +852,131 @@ namespace BPlusTree
         }
 
         bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
+
+        public ArrayBasedBPlusTreeImmutableList<TOutput> ConvertAll<TOutput>(Func<T, TOutput> converter)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ForEach(Action<T> action)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ArrayBasedBPlusTreeImmutableList<T> GetRange(int index, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void CopyTo(T[] array) => CopyTo(array, 0);
+
+        public void CopyTo(int index, T[] array, int arrayIndex, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool Exists(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public T? Find(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ArrayBasedBPlusTreeImmutableList<T> FindAll(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindIndex(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindIndex(int startIndex, Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindIndex(int startIndex, int count, Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public T? FindLast(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindLastIndex(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindLastIndex(int startIndex, Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int FindLastIndex(int startIndex, int count, Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TrueForAll(Predicate<T> match)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(T item)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(T item, IComparer<T>? comparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int BinarySearch(int index, int count, T item, IComparer<T>? comparer)
+        {
+            throw new NotImplementedException();
+        }
+
+        #region IList members
+        int IList.Add(object? value) => throw new NotSupportedException();
+
+        void IList.Clear() => throw new NotSupportedException();
+
+        bool IList.Contains(object? value) => IsCompatibleObject(value, out T cast) && Contains(cast);
+
+        int IList.IndexOf(object? value) => IsCompatibleObject(value, out T cast) ? IndexOf(cast) : -1;
+
+        void IList.Insert(int index, object? value) => throw new NotSupportedException();
+
+        void IList.Remove(object? value) => throw new NotSupportedException();
+
+        void IList.RemoveAt(int index) => throw new NotSupportedException();
+
+        void ICollection.CopyTo(Array array, int index)
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
+
+        private static bool IsCompatibleObject(object? value, out T cast)
+        {
+            // Non-null values are fine.  Only accept nulls if T is a class or Nullable<U>.
+            // Note that default(T) is not equal to null for value types except when T is Nullable<U>.
+            if (value is T typedValue)
+            {
+                cast = typedValue;
+                return true;
+            }
+            cast = default!;
+            return value == null && default(T) == null;
+        }
     }
 }

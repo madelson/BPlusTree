@@ -20,7 +20,7 @@ namespace BPlusTree
         IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public struct Enumerator : IEnumerator<T>, ISecurePooledObjectUser
+        public struct Enumerator : IEnumerator<T>, ISecurePooledObjectUser, IStrongEnumerator<T>
         {
             private Builder? _builder;
             private SecurePooledObject<InternalNodeStack>? _internalNodeStack;
