@@ -316,6 +316,22 @@ namespace BPlusTree.Tests
             Assert.AreEqual(list.ToList().FindIndex(100, 300, s => s[1] == s[2]), list.FindIndex(100, 300, s => s[1] == s[2]));
         }
 
+        [Test]
+        public void TestConvertAll()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
+
+            CollectionAssert.AreEqual(
+                list.Select(i => i * 2),
+                list.ConvertAll(i => i * 2)
+            );
+
+            CollectionAssert.AreEqual(
+                list.Select(i => (i / 10).ToString()),
+                list.ConvertAll(i => (i / 10).ToString())
+            );
+        }
+
 #if NET
         [Test]
         public void TestDoesNotAllocate()

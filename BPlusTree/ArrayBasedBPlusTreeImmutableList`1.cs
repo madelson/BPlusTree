@@ -28,6 +28,8 @@ namespace BPlusTree
 
         public int Count => _count;
 
+        public bool IsEmpty => _count == 0;
+
         public T this[int index] => ItemRef(index);
 
         public ref readonly T ItemRef(int index)
@@ -678,6 +680,7 @@ namespace BPlusTree
             get => (MaxLeafNodeSize / 2) + 1;
         }
 
+        // TODO does it make any sense to vary internal node sizes?
         private static int MaxInternalNodeSize
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -855,7 +858,37 @@ namespace BPlusTree
 
         public ArrayBasedBPlusTreeImmutableList<TOutput> ConvertAll<TOutput>(Func<T, TOutput> converter)
         {
-            throw new NotImplementedException();
+            if (converter is null) { ThrowHelper.ThrowArgumentNull(nameof(converter)); }
+
+            return IsEmpty ? ArrayBasedBPlusTreeImmutableList<TOutput>.Empty
+                : MaxLeafNodeSize == ArrayBasedBPlusTreeImmutableList<TOutput>.MaxLeafNodeSize ? new(ConvertAllSameNodeSize(_root, converter), _count)
+                : ArrayBasedBPlusTreeImmutableList.CreateRange(this.Select(converter));
+        }
+
+        private static Array ConvertAllSameNodeSize<TOutput>(Array node, Func<T, TOutput> converter)
+        {
+            if (node.GetType() == typeof(InternalEntry[]))
+            {
+                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+                var updated = new InternalEntry[internalNode.Length];
+                for (var i = 0; i < internalNode.Length; ++i)
+                {
+                    updated[i] = new()
+                    {
+                        CumulativeChildCount = internalNode[i].CumulativeChildCount,
+                        Child = ConvertAllSameNodeSize(internalNode[i].Child, converter),
+                    };
+                }
+                return updated;
+            }
+
+            LeafEntry[] leafNode = Unsafe.As<LeafEntry[]>(node);
+            var converted = new ArrayBasedBPlusTreeImmutableList<TOutput>.LeafEntry[leafNode.Length];
+            for (var i = 0; i < leafNode.Length; ++i)
+            {
+                converted[i].Item = converter(leafNode[i].Item);
+            }
+            return converted;
         }
 
         public void ForEach(Action<T> action)
@@ -912,6 +945,8 @@ namespace BPlusTree
 
         private bool Find(int startIndex, int count, Predicate<T> match, out int foundIndex, out T? foundItem)
         {
+            if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
+
             var state = (Predicate: match, Count: count, FoundIndex: startIndex, FoundItem: default(T));
             bool result = ScanForward(_root, FindDelegate.Instance, startIndex, ref state);
             foundIndex = state.FoundIndex;

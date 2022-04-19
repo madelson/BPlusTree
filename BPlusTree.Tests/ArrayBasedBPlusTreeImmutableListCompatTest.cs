@@ -55,6 +55,10 @@ namespace BPlusTree.Tests
                 return l.RemoveRange(index, r.Next(l.Count - index + 1));
             });
 
+        [Test]
+        public void TestConvertAllCompat() =>
+            TestCompat((l, r) => l is ArrayBasedBPlusTreeImmutableList<int> a ? a.ConvertAll(i => i + r.Next(10)) : ((ImmutableList<int>)l).ConvertAll(i => i + r.Next(10)));
+
         private static void TestCompat(Func<IImmutableList<int>, Random, IImmutableList<int>> transform)
         {
             var sizes = new[] { 5, 50, 500 };
