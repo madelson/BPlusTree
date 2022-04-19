@@ -911,10 +911,7 @@ namespace BPlusTree
             throw new NotImplementedException();
         }
 
-        public bool Exists(Predicate<T> match)
-        {
-            throw new NotImplementedException();
-        }
+        public bool Exists(Predicate<T> match) => FindIndex(match) >= 0;
 
         public T? Find(Predicate<T> match) 
         {
