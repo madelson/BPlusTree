@@ -209,6 +209,19 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestGetRange()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
+            Assert.AreSame(list, list.GetRange(0, list.Count));
+            Assert.AreSame(ArrayBasedBPlusTreeImmutableList<int>.Empty, list.GetRange(500, 0));
+
+            CollectionAssert.AreEqual(
+                Enumerable.Range(0, 1000).Where(i => i >= 300 && i < 700),
+                list.GetRange(300, 400)
+            );
+        }
+
+        [Test]
         public void TestBuilderSetItem()
         {
             ArrayBasedBPlusTreeImmutableList<string> list = ArrayBasedBPlusTreeImmutableList.CreateRange(new[] { "a", "b" });

@@ -14,7 +14,7 @@ namespace BPlusTree
 
     public sealed partial class ArrayBasedBPlusTreeImmutableList<T> : IImmutableList<T>, IList<T>, IList, IOrderedCollection<T>, IImmutableListQueries<T>, IStrongEnumerable<T, ArrayBasedBPlusTreeImmutableList<T>.Enumerator>
     {
-        public static ArrayBasedBPlusTreeImmutableList<T> Empty { get; } = new(Array.Empty<LeafEntry>(), 0);
+        public static readonly ArrayBasedBPlusTreeImmutableList<T> Empty = new(Array.Empty<LeafEntry>(), 0);
 
         private readonly Array _root;
         private readonly int _count;
@@ -320,6 +320,11 @@ namespace BPlusTree
             return leftLeaf;
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> InsertRange(int index, IEnumerable<T> items)
+        {
+            throw new NotImplementedException();
+        }
+
         public ArrayBasedBPlusTreeImmutableList<T> AddRange(IEnumerable<T> items)
         {
             if (items is null) { ThrowHelper.ThrowArgumentNull(nameof(items)); }
@@ -441,6 +446,8 @@ namespace BPlusTree
             }
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> Clear() => Empty;
+
         public ArrayBasedBPlusTreeImmutableList<T> RemoveAt(int index)
         {
             if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
@@ -449,8 +456,9 @@ namespace BPlusTree
 
         public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(int index, int count)
         {
+            // todo be more consistent about checking (index, count)
             if ((uint)index > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
-            if (count < 0 || index + count > _count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+            if (count < 0 || (uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
 
             return count == 0 ? this : RemoveRangeInternal(index, count);
         }
@@ -643,6 +651,27 @@ namespace BPlusTree
             }
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> GetRange(int index, int count)
+        {
+            if ((uint)index > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+
+            if (count == 0) { return Empty; }
+
+            if (count < 0 || (uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+
+            ArrayBasedBPlusTreeImmutableList<T> result = this;
+            if (index > 0)
+            {
+                result = result.RemoveRangeInternal(0, index);
+            }
+            int trimFromEndCount = _count - index - count;
+            if (trimFromEndCount > 0)
+            {
+                result = result.RemoveRangeInternal(result.Count - trimFromEndCount, trimFromEndCount);
+            }
+            return result;
+        }
+
         private static void SetCumulativeChildCounts(InternalEntry[] node)
         {
             var lastCumulativeChildCount = 0;
@@ -697,7 +726,9 @@ namespace BPlusTree
             get => (MaxInternalNodeSize / 2) + 1;
         }
 
-        public bool IsReadOnly => throw new NotImplementedException();
+        bool ICollection<T>.IsReadOnly => true;
+
+        bool IList.IsReadOnly => true;
 
         bool IList.IsFixedSize => throw new NotImplementedException();
 
@@ -869,11 +900,6 @@ namespace BPlusTree
             if (action is null) { ThrowHelper.ThrowArgumentNull(nameof(action)); }
 
             ScanForward(_root, ForEachDelegate.Instance, startIndex: 0, ref action);
-        }
-
-        public ArrayBasedBPlusTreeImmutableList<T> GetRange(int index, int count)
-        {
-            throw new NotImplementedException();
         }
 
         public void CopyTo(T[] array) => CopyTo(array, 0);

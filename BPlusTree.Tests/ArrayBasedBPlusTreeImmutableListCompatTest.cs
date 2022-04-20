@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,6 +11,18 @@ namespace BPlusTree.Tests
 {
     internal class ArrayBasedBPlusTreeImmutableListCompatTest
     {
+        [Test]
+        public void TestListApiCompat() => TestApiCompat(typeof(ArrayBasedBPlusTreeImmutableList<>), typeof(ImmutableList<>));
+
+        [Test]
+        public void TestBuilderApiCompat() => TestApiCompat(typeof(ArrayBasedBPlusTreeImmutableList<>.Builder), typeof(ImmutableList<>.Builder));
+
+        [Test]
+        public void TestEnumeratorApiCompat() => TestApiCompat(typeof(ArrayBasedBPlusTreeImmutableList<>.Enumerator), typeof(ImmutableList<>.Enumerator));
+
+        [Test]
+        public void TestStaticAccessApiCompat() => TestApiCompat(typeof(ArrayBasedBPlusTreeImmutableList), typeof(ImmutableList));
+
         [Test]
         public void TestAddCompat() =>
             TestCompat((l, r) => l.Add(r.Next()));
@@ -56,8 +69,44 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestGetRangeCompat() =>
+            TestCompat((l, r) =>
+            {
+                if (l.Count == 0)
+                {
+                    l = l.AddRange(Enumerable.Range(r.Next(10000), r.Next(100, 1000)));
+                }
+                var index = r.Next(l.Count);
+                var count = r.Next(l.Count - index + 1);
+                return l is ArrayBasedBPlusTreeImmutableList<int> a ? a.GetRange(index, count) : ((ImmutableList<int>)l).GetRange(index, count);
+            });
+
+        [Test]
         public void TestConvertAllCompat() =>
             TestCompat((l, r) => l is ArrayBasedBPlusTreeImmutableList<int> a ? a.ConvertAll(i => i + r.Next(10)) : ((ImmutableList<int>)l).ConvertAll(i => i + r.Next(10)));
+
+        private static void TestApiCompat(Type actual, Type expected)
+        {
+            AssertEqual(GetInterfaces(expected), GetInterfaces(actual));
+            AssertEqual(GetFields(expected), GetFields(actual));
+            AssertEqual(GetMethods(expected), GetMethods(actual));
+
+            static void AssertEqual(IEnumerable<string> expected, IEnumerable<string> actual) => CollectionAssert.AreEqual(
+                expected,
+                actual,
+                $"EXPECTED:{Environment.NewLine}{string.Join(Environment.NewLine, expected)}{Environment.NewLine}{Environment.NewLine}ACTUAL:{Environment.NewLine}{string.Join(Environment.NewLine, actual)}");
+
+            static IEnumerable<string> GetInterfaces(Type type) => type.GetInterfaces().Select(i => i.Name).OrderBy(s => s);
+
+            static IEnumerable<string> GetFields(Type type) => type.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance)
+                .Select(f => f.ToString()!.Replace(type.FullName!, "IMMUTABLELIST"))
+                .OrderBy(s => s);
+
+            static IEnumerable<string> GetMethods(Type type) =>
+                type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance)
+                    .Select(m => m.ToString()!.Replace(type.FullName!, "IMMUTABLELIST"))
+                    .OrderBy(s => s);
+        }
 
         private static void TestCompat(Func<IImmutableList<int>, Random, IImmutableList<int>> transform)
         {
