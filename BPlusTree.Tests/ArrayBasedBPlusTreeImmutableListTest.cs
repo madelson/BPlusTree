@@ -153,6 +153,19 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestRemove()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000).Select(i => "i" + i));
+            Assert.AreSame(list, list.Remove("j"));
+            Assert.AreSame(list, list.Remove("j", StringComparer.OrdinalIgnoreCase));
+
+            CollectionAssert.AreEquivalent(list.Where(i => i != "i345"), list.Remove("i345"));
+
+            Assert.AreSame(list, list.Remove("I777", equalityComparer: null));
+            CollectionAssert.AreEquivalent(list.Where(i => i != "i777"), list.Remove("I777", StringComparer.OrdinalIgnoreCase));
+        }
+
+        [Test]
         public void TestRemoveAt()
         {
             const int Count = 500;

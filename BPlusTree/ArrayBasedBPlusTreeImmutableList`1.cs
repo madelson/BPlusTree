@@ -448,6 +448,20 @@ namespace BPlusTree
 
         public ArrayBasedBPlusTreeImmutableList<T> Clear() => Empty;
 
+        /// <summary>
+        /// See the <see cref="IImmutableList{T}"/> interface.
+        /// </summary>
+        public ArrayBasedBPlusTreeImmutableList<T> Remove(T value) => this.Remove(value, equalityComparer: null);
+
+        /// <summary>
+        /// See the <see cref="IImmutableList{T}"/> interface.
+        /// </summary>
+        public ArrayBasedBPlusTreeImmutableList<T> Remove(T value, IEqualityComparer<T>? equalityComparer)
+        {
+            int index = IndexOf(value, index: 0, _count, equalityComparer);
+            return index < 0 ? this : RemoveAt(index);
+        }
+
         public ArrayBasedBPlusTreeImmutableList<T> RemoveAt(int index)
         {
             if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
@@ -827,10 +841,7 @@ namespace BPlusTree
 
         IImmutableList<T> IImmutableList<T>.Insert(int index, T item) => Insert(index, item);
 
-        IImmutableList<T> IImmutableList<T>.InsertRange(int index, IEnumerable<T> items)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.InsertRange(int index, IEnumerable<T> items) => InsertRange(index, items);
 
         public int LastIndexOf(T item, int index, int count, IEqualityComparer<T>? equalityComparer)
         {
