@@ -861,36 +861,7 @@ namespace BPlusTree
         {
             if (converter is null) { ThrowHelper.ThrowArgumentNull(nameof(converter)); }
 
-            return IsEmpty ? ArrayBasedBPlusTreeImmutableList<TOutput>.Empty
-                : MaxLeafNodeSize == ArrayBasedBPlusTreeImmutableList<TOutput>.MaxLeafNodeSize ? new(ConvertAllSameNodeSize(_root, converter), _count)
-                : ArrayBasedBPlusTreeImmutableList.CreateRange(this.Select(converter));
-        }
-
-        // todo is this really worth the trouble?
-        private static Array ConvertAllSameNodeSize<TOutput>(Array node, Func<T, TOutput> converter)
-        {
-            if (node.GetType() == typeof(InternalEntry[]))
-            {
-                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
-                var updated = new InternalEntry[internalNode.Length];
-                for (var i = 0; i < internalNode.Length; ++i)
-                {
-                    updated[i] = new()
-                    {
-                        CumulativeChildCount = internalNode[i].CumulativeChildCount,
-                        Child = ConvertAllSameNodeSize(internalNode[i].Child, converter),
-                    };
-                }
-                return updated;
-            }
-
-            LeafEntry[] leafNode = Unsafe.As<LeafEntry[]>(node);
-            var converted = new ArrayBasedBPlusTreeImmutableList<TOutput>.LeafEntry[leafNode.Length];
-            for (var i = 0; i < leafNode.Length; ++i)
-            {
-                converted[i].Item = converter(leafNode[i].Item);
-            }
-            return converted;
+            return ArrayBasedBPlusTreeImmutableList.CreateRange(this.Select(converter));
         }
 
         public void ForEach(Action<T> action)
@@ -925,15 +896,9 @@ namespace BPlusTree
             throw new NotImplementedException();
         }
 
-        public int FindIndex(Predicate<T> match) =>
-            Find(startIndex: 0, count: _count, match, out var foundIndex, out _) ? foundIndex : -1;
+        public int FindIndex(Predicate<T> match) => FindIndex(startIndex: 0, match);
 
-        public int FindIndex(int startIndex, Predicate<T> match)
-        {
-            if ((uint)startIndex >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(startIndex)); }
-
-            return Find(startIndex, _count, match, out var foundIndex, out _) ? foundIndex : -1;
-        }
+        public int FindIndex(int startIndex, Predicate<T> match) => FindIndex(startIndex: 0, _count, match);
 
         public int FindIndex(int startIndex, int count, Predicate<T> match)
         {
