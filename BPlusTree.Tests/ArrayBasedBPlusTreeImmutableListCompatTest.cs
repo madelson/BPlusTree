@@ -53,6 +53,18 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestRemoveCompat() =>
+            TestCompat((l, r) => l.Remove(l[r.Next(l.Count)]));
+
+        [Test]
+        public void TestRemoveAllCompat() =>
+            TestCompat((l, r) => 
+            {
+                var index = r.Next(l.Count);
+                return l.RemoveAll(i => i == l[index] || i == l[index / 2]);
+            });
+
+        [Test]
         public void TestRemoveAtCompat() =>
             TestCompat((l, r) => l.RemoveAt(r.Next(l.Count)));
 

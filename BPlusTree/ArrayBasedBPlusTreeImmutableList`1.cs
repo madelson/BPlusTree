@@ -462,6 +462,35 @@ namespace BPlusTree
             return index < 0 ? this : RemoveAt(index);
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> RemoveAll(Predicate<T> match)
+        {
+            if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
+
+            var result = this;
+            var index = 0;
+            Predicate<T>? negatedMatch = null;
+            while (index < result._count)
+            {
+                int removeStartIndex = result.FindIndex(index, match);
+                if (removeStartIndex < 0)
+                {
+                    break;
+                }
+
+                int removeEndIndex = result.FindIndex(removeStartIndex + 1, negatedMatch ??= i => !match(i));
+                int removeCount = (removeEndIndex < 0 ? result._count : removeEndIndex) - removeStartIndex;
+                result = result.RemoveRange(removeStartIndex, removeCount);
+
+                // We just removed [removeStartIndex..removeEndIndex]. One might think the search should start
+                // again from removeStartIndex. However, we know that that is not a match because otherwise
+                // it would have been part of the removed range. Therefore, removeStartIndex + 1 is the first
+                // index we haven't tested.
+                index = removeStartIndex + 1;
+            }
+
+            return result;
+        }
+
         public ArrayBasedBPlusTreeImmutableList<T> RemoveAt(int index)
         {
             if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
@@ -848,15 +877,9 @@ namespace BPlusTree
             throw new NotImplementedException();
         }
 
-        IImmutableList<T> IImmutableList<T>.Remove(T value, IEqualityComparer<T>? equalityComparer)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.Remove(T value, IEqualityComparer<T>? equalityComparer) => Remove(value, equalityComparer);
 
-        IImmutableList<T> IImmutableList<T>.RemoveAll(Predicate<T> match)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.RemoveAll(Predicate<T> match) => RemoveAll(match);
 
         IImmutableList<T> IImmutableList<T>.RemoveAt(int index) => RemoveAt(index);
 
@@ -935,7 +958,7 @@ namespace BPlusTree
 
         public int FindIndex(Predicate<T> match) => FindIndex(startIndex: 0, match);
 
-        public int FindIndex(int startIndex, Predicate<T> match) => FindIndex(startIndex: 0, _count, match);
+        public int FindIndex(int startIndex, Predicate<T> match) => FindIndex(startIndex, _count - startIndex, match);
 
         public int FindIndex(int startIndex, int count, Predicate<T> match)
         {
@@ -950,7 +973,8 @@ namespace BPlusTree
         {
             if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
 
-            var state = (Predicate: match, Count: count, FoundIndex: startIndex, FoundItem: default(T));
+            // TODO revisit naming of Count
+            var state = (Predicate: match, Count: count + startIndex, FoundIndex: startIndex, FoundItem: default(T));
             bool result = ScanForward(_root, FindDelegate.Instance, startIndex, ref state);
             foundIndex = state.FoundIndex;
             foundItem = state.FoundItem;

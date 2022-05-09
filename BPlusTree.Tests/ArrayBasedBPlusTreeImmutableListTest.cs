@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace BPlusTree.Tests
@@ -82,13 +83,13 @@ namespace BPlusTree.Tests
             {
                 list = list.Insert(1, $"z{i}");
             }
-            CollectionAssert.AreEquivalent(
+            CollectionAssert.AreEqual(
                 new[] { "c" }
-                    .Concat(Enumerable.Range(0, 100).Select(i => $"x{i}"))
+                    .Concat(Enumerable.Range(0, 100).Select(i => $"z{i}"))
                     .Concat(new[] { "a" })
                     .Concat(Enumerable.Range(0, 100).Select(i => $"y{i}"))
                     .Concat(new[] { "b" })
-                    .Concat(Enumerable.Range(0, 100).Select(i => $"z{i}")),
+                    .Concat(Enumerable.Range(0, 100).Select(i => $"x{i}")),
                 list
             );
         }
@@ -159,10 +160,19 @@ namespace BPlusTree.Tests
             Assert.AreSame(list, list.Remove("j"));
             Assert.AreSame(list, list.Remove("j", StringComparer.OrdinalIgnoreCase));
 
-            CollectionAssert.AreEquivalent(list.Where(i => i != "i345"), list.Remove("i345"));
+            CollectionAssert.AreEqual(list.Where(i => i != "i345"), list.Remove("i345"));
 
             Assert.AreSame(list, list.Remove("I777", equalityComparer: null));
-            CollectionAssert.AreEquivalent(list.Where(i => i != "i777"), list.Remove("I777", StringComparer.OrdinalIgnoreCase));
+            CollectionAssert.AreEqual(list.Where(i => i != "i777"), list.Remove("I777", StringComparer.OrdinalIgnoreCase));
+        }
+
+        [Test]
+        public void TestRemoveAll()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 801));
+            Assert.AreSame(list, list.RemoveAll(i => i < 0));
+            CollectionAssert.AreEqual(list.Except(new[] { 111, 222, 333, 444, 555, 666, 777 }), list.RemoveAll(i => Regex.IsMatch(i.ToString(), @"^(\d)\1\1$")));
+            CollectionAssert.AreEqual(list.Where(i => i < 500), list.RemoveAll(i => i >= 500));
         }
 
         [Test]
