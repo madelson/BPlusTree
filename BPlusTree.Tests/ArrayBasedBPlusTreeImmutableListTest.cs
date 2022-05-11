@@ -262,6 +262,26 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestBuilderAdd()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(new[] { "a", "b" });
+            var builder = list.ToBuilder();
+            builder.Add("c");
+            builder.Add("d");
+            IEnumerable<string> equivalentEnumerable = list.Concat(new[] { "c", "d" });
+            CollectionAssert.AreEqual(equivalentEnumerable, builder);
+            CollectionAssert.AreEqual(equivalentEnumerable, builder.ToImmutable());
+
+            for (var i = 0; i < 500; ++i)
+            {
+                builder.Add("x");
+            }
+            equivalentEnumerable = equivalentEnumerable.Concat(Enumerable.Repeat("x", 500));
+            CollectionAssert.AreEqual(equivalentEnumerable, builder);
+            CollectionAssert.AreEqual(equivalentEnumerable, builder.ToImmutable());
+        }
+
+        [Test]
         public void TestIndexOf()
         {
             var list = ArrayBasedBPlusTreeImmutableList.CreateRange(

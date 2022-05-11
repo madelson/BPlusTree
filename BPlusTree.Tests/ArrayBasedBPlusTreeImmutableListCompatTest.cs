@@ -53,6 +53,19 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestBuilderAddCompat() =>
+            TestCompat((l, r) =>
+            {
+                IList<int> builder = ToBuilder(l);
+                var addCount = r.Next(10);
+                for (var i = 0; i < addCount; ++i)
+                {
+                    builder.Add(r.Next());
+                }
+                return ToImmutable(builder);
+            });
+
+        [Test]
         public void TestRemoveCompat() =>
             TestCompat((l, r) => l.Remove(l[r.Next(l.Count)]));
 

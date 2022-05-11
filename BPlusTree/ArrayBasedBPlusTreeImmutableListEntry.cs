@@ -16,12 +16,18 @@ namespace BPlusTree
         public int CumulativeChildCount;
         public Array Child;
 
+        public static ArrayBasedBPlusTreeImmutableListInternalEntry CreateMutable(Array child, int cumulativeChildCount)
+        {
+            Debug.Assert((cumulativeChildCount & IsChildMutableMask) == 0);
+            return new() { Child = child, CumulativeChildCount = cumulativeChildCount | IsChildMutableMask };
+        }
+
         public int CumulativeChildCountForBuilder
         {
             get => CumulativeChildCount & CumulativeChildCountMask;
             set
             {
-                Debug.Assert((value | IsChildMutableMask) == 0);
+                Debug.Assert((value & IsChildMutableMask) == 0);
                 CumulativeChildCount = (CumulativeChildCount & IsChildMutableMask) | value;
             }
         }
