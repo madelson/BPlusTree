@@ -78,15 +78,49 @@ namespace BPlusTree
             public bool MoveNext()
             {
                 ThrowIfDisposed();
-                if (_builder is { } builder && builder.Version != _builderVersion)
+                if (_builder != null)
                 {
-                    ThrowHelper.ThrowVersionChanged();
+                    return BuilderMoveNext();
                 }
 
                 if (_leaf is { } leaf && _leafIndex < leaf.Length - 1)
                 {
                     ++_leafIndex;
                     return true;
+                }
+
+                return NavigateToNextLeaf();
+            }
+
+            private bool BuilderMoveNext()
+            {
+                if (_builder!.Version != _builderVersion) 
+                { 
+                    ThrowHelper.ThrowVersionChanged(); 
+                }
+                
+                if (_leaf is { } leaf)
+                {
+                    int leafCount;
+                    InternalNodeStack internalNodeStack;
+                    if (_internalNodeStack is null 
+                        || (internalNodeStack = _internalNodeStack!.Use(ref this)).Count == 0)
+                    {
+                        leafCount = _builder!.Count;
+                    }
+                    else
+                    {
+                        var (parentNode, parentNodeIndex) = internalNodeStack.Peek();
+                        leafCount = parentNodeIndex == 0
+                            ? parentNode[parentNodeIndex].CumulativeChildCountForBuilder
+                            : parentNode[parentNodeIndex].CumulativeChildCountForBuilder - parentNode[parentNodeIndex - 1].CumulativeChildCountForBuilder;
+                    }
+
+                    if (_leafIndex < leafCount - 1)
+                    {
+                        ++_leafIndex;
+                        return true;
+                    }
                 }
 
                 return NavigateToNextLeaf();

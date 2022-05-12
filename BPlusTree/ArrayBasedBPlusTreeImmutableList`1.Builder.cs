@@ -113,31 +113,42 @@ namespace BPlusTree
             {
                 if (_isRootMutable)
                 {
-                    Freeze(_root);
+                    Freeze(ref _root, _count);
                     _isRootMutable = false;
                 }
 
                 return new(_root, _count);
             }
 
-            private static void Freeze(Array node)
+            private static void Freeze(ref Array node, int count)
             {
-                if (node.GetType() != typeof(InternalEntry[])) { return; }
-
-                InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
-                for (var i = 0; i < internalNode.Length; ++i)
+                if (node.GetType() == typeof(InternalEntry[]))
                 {
-                    if (internalNode[i].IsChildMutable)
+                    InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+                    var previousCumulativeChildCount = 0;
+                    for (var i = 0; i < internalNode.Length; ++i)
                     {
-                        Freeze(internalNode[i].Child);
-                        internalNode[i].IsChildMutable = false;
+                        if (internalNode[i].IsChildMutable)
+                        {
+                            Freeze(ref internalNode[i].Child, internalNode[i].CumulativeChildCountForBuilder - previousCumulativeChildCount);
+                            internalNode[i].IsChildMutable = false;
+                        }
+                        previousCumulativeChildCount = internalNode[i].CumulativeChildCountForBuilder;
                     }
                 }
+                // builder leaves can have extra "slack" to minimize allocations; resize as needed
+                else if (node.Length != count)
+                {
+                    Debug.Assert(node.Length > count && node.Length == MaxLeafNodeSize); // should be a pre-expanded node
+                    var resized = new LeafEntry[count];
+                    Unsafe.As<LeafEntry[]>(node).AsSpan(0, count).CopyTo(resized);
+                    node = resized;
+                } 
             }
 
             public void Add(T item)
             {
-                Array updated = Add(_root, item, _isRootMutable, out bool isSplit);
+                Array updated = Add(_root, _count, item, _isRootMutable, out bool isSplit);
                 ++_version;
                 _root = isSplit
                     ? new InternalEntry[]
@@ -150,20 +161,26 @@ namespace BPlusTree
                 ++_count;
             }
 
-            private static Array Add(Array node, T item, bool isMutable, out bool isSplit)
+            private static Array Add(Array node, int count, T item, bool isMutable, out bool isSplit)
             {
                 if (node.GetType() == typeof(InternalEntry[]))
                 {
                     InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
 
-                    Array updatedChild = Add(internalNode[internalNode.Length - 1].Child, item, internalNode[internalNode.Length - 1].IsChildMutable, out bool isChildSplit);
+                    int lastChildCount = internalNode.Length == 1 ? count : count - internalNode[internalNode.Length - 2].CumulativeChildCountForBuilder;
+                    Array updatedChild = Add(
+                        internalNode[internalNode.Length - 1].Child, 
+                        lastChildCount, 
+                        item, 
+                        internalNode[internalNode.Length - 1].IsChildMutable, 
+                        out bool isChildSplit);
 
                     // case 1: update
                     if (!isChildSplit)
                     {
                         isSplit = false;
 
-                        if (isMutable)
+                        if (isMutable) // update in place
                         {
                             internalNode[internalNode.Length - 1] = InternalEntry.CreateMutable(
                                 updatedChild,
@@ -177,8 +194,6 @@ namespace BPlusTree
                         updated[updated.Length - 1] = InternalEntry.CreateMutable(updatedChild, updated[updated.Length - 1].CumulativeChildCountForBuilder + 1);
                         return updated;
                     }
-
-                    Debug.Assert(GetCount(updatedChild) == 1);
 
                     // case 2: expand
                     if (internalNode.Length < MaxInternalNodeSize)
@@ -201,18 +216,26 @@ namespace BPlusTree
                 LeafEntry[] leafNode = Unsafe.As<LeafEntry[]>(node);
 
                 // case 1: expand
-                if (leafNode.Length < MaxLeafNodeSize)
+                if (count < MaxLeafNodeSize)
                 {
-                    var expandedLeaf = new LeafEntry[leafNode.Length + 1];
-                    leafNode.AsSpan().CopyTo(expandedLeaf);
-                    expandedLeaf[expandedLeaf.Length - 1].Item = item;
                     isSplit = false;
+                    if (isMutable) // expand in place
+                    {
+                        leafNode[count].Item = item;
+                        return leafNode;
+                    }
+
+                    var expandedLeaf = new LeafEntry[MaxLeafNodeSize];
+                    leafNode.AsSpan().CopyTo(expandedLeaf);
+                    expandedLeaf[leafNode.Length].Item = item;
                     return expandedLeaf;
                 }
 
                 // case 2: "left-leaning" split
                 isSplit = true;
-                return new LeafEntry[] { new() { Item = item } };
+                var newLeaf = new LeafEntry[MaxLeafNodeSize];
+                newLeaf[0].Item = item;
+                return newLeaf;
             }
 
             public void Clear()
@@ -388,17 +411,6 @@ namespace BPlusTree
             public int BinarySearch(int index, int count, T item, IComparer<T>? comparer)
             {
                 throw new NotImplementedException();
-            }
-
-            private static int GetCount(Array node)
-            {
-                if (node.GetType() == typeof(InternalEntry[]))
-                {
-                    InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
-                    return internalNode[internalNode.Length - 1].CumulativeChildCountForBuilder;
-                }
-
-                return Unsafe.As<LeafEntry[]>(node).Length;
             }
         }
     }
