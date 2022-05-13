@@ -916,10 +916,7 @@ namespace BPlusTree
 
         IImmutableList<T> IImmutableList<T>.RemoveAt(int index) => RemoveAt(index);
 
-        IImmutableList<T> IImmutableList<T>.RemoveRange(IEnumerable<T> items, IEqualityComparer<T>? equalityComparer)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.RemoveRange(IEnumerable<T> items, IEqualityComparer<T>? equalityComparer) => RemoveRange(items, equalityComparer);
 
         IImmutableList<T> IImmutableList<T>.RemoveRange(int index, int count) => RemoveRange(index, count);
 
