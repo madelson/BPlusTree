@@ -266,6 +266,11 @@ namespace BPlusTree
                 throw new NotImplementedException();
             }
 
+            public int IndexOf(T item, int startIndex, int count, IEqualityComparer<T>? equalityComparer)
+            {
+                throw new NotImplementedException();
+            }
+
             public void Insert(int index, T item)
             {
                 throw new NotImplementedException();

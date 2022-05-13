@@ -232,6 +232,14 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestRemoveRangeEnumerable()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
+            var toRemove = new[] { 10, 375, -3, 8, 775 };
+            CollectionAssert.AreEqual(list.Except(toRemove), list.RemoveRange(toRemove));
+        }
+
+        [Test]
         public void TestGetRange()
         {
             var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));

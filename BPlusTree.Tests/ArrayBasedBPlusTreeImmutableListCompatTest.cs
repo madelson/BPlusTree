@@ -94,6 +94,18 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestRemoveRangeEnumerableCompat() =>
+            TestCompat((l, r) =>
+            {
+                if (l.Count == 0)
+                {
+                    l = l.AddRange(Enumerable.Range(r.Next(100), r.Next(10, 100)));
+                }
+                var toRemove = l.Where(_ => r.NextDouble() < .1);
+                return l.RemoveRange(toRemove);
+            });
+
+        [Test]
         public void TestGetRangeCompat() =>
             TestCompat((l, r) =>
             {

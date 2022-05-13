@@ -521,6 +521,39 @@ namespace BPlusTree
             return new(updated, _count - count);
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(IEnumerable<T> items) => this.RemoveRange(items, equalityComparer: null);
+
+        public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(IEnumerable<T> items, IEqualityComparer<T>? equalityComparer)
+        {
+            if (items is null) { ThrowHelper.ThrowArgumentNull(nameof(items)); }
+
+            if (IsEmpty) { return this; }
+
+            Builder? builder = null;
+            foreach (var item in items)
+            {
+                if (builder is null)
+                {
+                    int index = IndexOf(item, 0, _count, equalityComparer);
+                    if (index >= 0)
+                    {
+                        builder = ToBuilder();
+                        builder.RemoveAt(index);
+                    }
+                }
+                else
+                {
+                    int index = builder.IndexOf(item, 0, builder.Count, equalityComparer);
+                    if (index >= 0)
+                    {
+                        builder.RemoveAt(index);
+                    }
+                }
+            }
+
+            return builder?.ToImmutable() ?? this;
+        }
+
         private static Array RemoveRange(Array node, int index, int count, bool isLeadingEdge)
         {
             Debug.Assert(index + count <= GetCount(node));
