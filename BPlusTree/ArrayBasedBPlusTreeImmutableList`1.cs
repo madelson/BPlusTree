@@ -748,6 +748,22 @@ namespace BPlusTree
             return result;
         }
 
+        /// <summary>
+        /// See the <see cref="IImmutableList{T}"/> interface.
+        /// </summary>
+        public ArrayBasedBPlusTreeImmutableList<T> Replace(T oldValue, T newValue) => Replace(oldValue, newValue, EqualityComparer<T>.Default);
+
+        /// <summary>
+        /// See the <see cref="IImmutableList{T}"/> interface.
+        /// </summary>
+        public ArrayBasedBPlusTreeImmutableList<T> Replace(T oldValue, T newValue, IEqualityComparer<T>? equalityComparer)
+        {
+            int index = IndexOf(oldValue, 0, _count, equalityComparer);
+            if (index < 0) { ThrowHelper.ThrowCannotFindOldValue(); }
+
+            return SetItem(index, newValue);
+        }
+
         private static void SetCumulativeChildCounts(InternalEntry[] node)
         {
             var lastCumulativeChildCount = 0;
@@ -920,10 +936,7 @@ namespace BPlusTree
 
         IImmutableList<T> IImmutableList<T>.RemoveRange(int index, int count) => RemoveRange(index, count);
 
-        IImmutableList<T> IImmutableList<T>.Replace(T oldValue, T newValue, IEqualityComparer<T>? equalityComparer)
-        {
-            throw new NotImplementedException();
-        }
+        IImmutableList<T> IImmutableList<T>.Replace(T oldValue, T newValue, IEqualityComparer<T>? equalityComparer) => Replace(oldValue, newValue, equalityComparer);
 
         IImmutableList<T> IImmutableList<T>.SetItem(int index, T value) => SetItem(index, value);
 

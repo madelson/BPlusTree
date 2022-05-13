@@ -24,5 +24,9 @@ namespace BPlusTree
         [DoesNotReturn]
         public static void ThrowObjectDisposed<T>(T value) =>
             throw new ObjectDisposedException((value?.GetType() ?? typeof(T)).ToString());
+
+        [DoesNotReturn]
+        public static void ThrowCannotFindOldValue() =>
+            throw new ArgumentException("Cannot find the old value", "oldValue");
     }
 }

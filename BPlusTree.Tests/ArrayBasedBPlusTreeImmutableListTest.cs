@@ -253,6 +253,13 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestReplace()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(new[] { "a", "b", "b", "d" });
+            CollectionAssert.AreEqual(new[] { "a", "x", "b", "d" }, list.Replace("b", "x"));
+        }
+
+        [Test]
         public void TestBuilderSetItem()
         {
             ArrayBasedBPlusTreeImmutableList<string> list = ArrayBasedBPlusTreeImmutableList.CreateRange(new[] { "a", "b" });

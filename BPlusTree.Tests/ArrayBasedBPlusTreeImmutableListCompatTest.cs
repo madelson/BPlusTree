@@ -119,6 +119,10 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestReplaceCompat() =>
+            TestCompat((l, r) => l.Replace(l[r.Next(l.Count)], r.Next(100)));
+
+        [Test]
         public void TestConvertAllCompat() =>
             TestCompat((l, r) => l is ArrayBasedBPlusTreeImmutableList<int> a ? a.ConvertAll(i => i + r.Next(10)) : ((ImmutableList<int>)l).ConvertAll(i => i + r.Next(10)));
 
