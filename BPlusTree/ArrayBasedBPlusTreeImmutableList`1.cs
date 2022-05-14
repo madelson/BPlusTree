@@ -36,12 +36,16 @@ namespace BPlusTree
         {
             if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
 
-            Array current = _root;
+            return ref ItemRef(_root, index);
+        }
+
+        private static ref T ItemRef(Array node, int index)
+        {
             while (true)
             {
-                if (current.GetType() == typeof(InternalEntry[]))
+                if (node.GetType() == typeof(InternalEntry[]))
                 {
-                    InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(current);
+                    InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
 
                     for (var i = 0; i < internalNode.Length; ++i)
                     {
@@ -51,15 +55,15 @@ namespace BPlusTree
                             {
                                 index -= internalNode[i - 1].CumulativeChildCount;
                             }
-                            current = internalNode[i].Child;
+                            node = internalNode[i].Child;
                             break;
                         }
                     }
-                    Debug.Assert(current != internalNode);
+                    Debug.Assert(node != internalNode);
                 }
                 else
                 {
-                    return ref Unsafe.As<LeafEntry[]>(current)[index].Item;
+                    return ref Unsafe.As<LeafEntry[]>(node)[index].Item;
                 }
             }
         }
@@ -764,6 +768,65 @@ namespace BPlusTree
             return SetItem(index, newValue);
         }
 
+        public ArrayBasedBPlusTreeImmutableList<T> Reverse() => Reverse(0, _count);
+
+        public ArrayBasedBPlusTreeImmutableList<T> Reverse(int index, int count)
+        {
+            if ((uint)index > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            if (count < 0 || (uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+
+            if (count <= 1) { return this; }
+
+            Array clonedRoot = CloneRange(_root, index, count);
+            var low = index;
+            var high = index + count - 1;
+            do
+            {
+                ref T lowItemRef = ref ItemRef(clonedRoot, low);
+                ref T highItemRef = ref ItemRef(clonedRoot, high);
+                (highItemRef, lowItemRef) = (lowItemRef, highItemRef);
+            }
+            while (--high > ++low);
+
+            return new(clonedRoot, _count);
+
+            static Array CloneRange(Array node, int index, int count)
+            {
+                Debug.Assert(index >= 0);
+                Debug.Assert(count > 0 && index + count <= GetCount(node));
+
+                if (node.GetType() == typeof(InternalEntry[]))
+                {
+                    InternalEntry[] clonedNode = Unsafe.As<InternalEntry[]>(node).Copy();
+                    
+                    // identify the range of affected indices
+                    var low = 0;
+                    while (clonedNode[low].CumulativeChildCount <= index)
+                    {
+                        ++low;
+                    }
+                    var high = low;
+                    while (clonedNode[high].CumulativeChildCount < index + count)
+                    {
+                        ++high;
+                    }
+
+                    var remainingCount = count;
+                    for (var i = low; i <= high; ++i)
+                    { 
+                        int previousCumulativeChildCount = i == 0 ? 0 : clonedNode[i - 1].CumulativeChildCount;
+                        int childIndex = i == low ? index - previousCumulativeChildCount : 0;
+                        int childCount = (i == high ? count + index : clonedNode[i].CumulativeChildCount) - previousCumulativeChildCount - childIndex;
+                        clonedNode[i].Child = CloneRange(clonedNode[i].Child, childIndex, childCount);
+                    }
+
+                    return clonedNode;
+                }
+
+                return Unsafe.As<LeafEntry[]>(node).Copy();
+            }
+        }
+
         private static void SetCumulativeChildCounts(InternalEntry[] node)
         {
             var lastCumulativeChildCount = 0;
@@ -828,8 +891,8 @@ namespace BPlusTree
 
         object ICollection.SyncRoot => throw new NotImplementedException();
 
-        object? IList.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        T IList<T>.this[int index] { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        object? IList.this[int index] { get => this[index]; set => throw new NotSupportedException(); }
+        T IList<T>.this[int index] { get => this[index]; set => throw new NotSupportedException(); }
 
         [DebuggerDisplay("{Item}")]
         private struct LeafEntry { public T Item; }

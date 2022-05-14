@@ -106,6 +106,20 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestReverseCompat() =>
+            TestCompat((l, r) =>
+            {
+                var index = r.Next(l.Count);
+                var count = r.Next(l.Count - index + 1);
+                return l switch
+                {
+                    ImmutableList<int> immutableList => immutableList.Reverse(index, count),
+                    ArrayBasedBPlusTreeImmutableList<int> arrayBasedList => arrayBasedList.Reverse(index, count),
+                    _ => throw new NotSupportedException(l.GetType().FullName)
+                };
+            });
+
+        [Test]
         public void TestGetRangeCompat() =>
             TestCompat((l, r) =>
             {
@@ -166,6 +180,11 @@ namespace BPlusTree.Tests
                 for (var i = 0; i < baselines.Count; ++i)
                 {
                     CollectionAssert.AreEqual(baselines[i], results[i], $"i={i}, size={size}");
+                    // TODO add this test; requires tracking the original immutable list in the builder
+                    //if (i > 0 && baselines[i] == baselines[i - 1])
+                    //{
+                    //    Assert.AreSame(results[i - 1], results[i]);
+                    //}
                 }
 
                 void Test(List<IImmutableList<int>> results)

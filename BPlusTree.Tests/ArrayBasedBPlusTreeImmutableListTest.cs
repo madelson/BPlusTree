@@ -240,6 +240,17 @@ namespace BPlusTree.Tests
         }
 
         [Test]
+        public void TestReverse()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 200));
+            CollectionAssert.AreEqual(list.Select(i => i).Reverse(), list.Reverse());
+
+            var array = list.ToArray();
+            Array.Reverse(array, 37, 153);
+            CollectionAssert.AreEqual(array, list.Reverse(37, 153));
+        }
+
+        [Test]
         public void TestGetRange()
         {
             var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 1000));
