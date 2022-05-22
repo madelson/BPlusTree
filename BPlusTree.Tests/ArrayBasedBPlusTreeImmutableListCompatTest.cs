@@ -120,6 +120,23 @@ namespace BPlusTree.Tests
             });
 
         [Test]
+        public void TestSortCompat() =>
+            TestCompat((l, r) =>
+            {
+                var indexToRandomize = r.Next(l.Count);
+                var sortStartIndex = indexToRandomize - r.Next(indexToRandomize + 1);
+                var sortEndIndex = r.Next(indexToRandomize, l.Count);
+                var sortCount = sortEndIndex - sortStartIndex + 1;
+                var unsorted = l.SetItem(indexToRandomize, r.Next());
+                return l switch
+                {
+                    ImmutableList<int> immutableList => immutableList.Sort(sortStartIndex, sortCount, comparer: null),
+                    ArrayBasedBPlusTreeImmutableList<int> arrayBasedList => arrayBasedList.Sort(sortStartIndex, sortCount, comparer: null),
+                    _ => throw new NotSupportedException(l.GetType().FullName)
+                };
+            });
+
+        [Test]
         public void TestGetRangeCompat() =>
             TestCompat((l, r) =>
             {

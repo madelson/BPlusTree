@@ -44,6 +44,7 @@ namespace BPlusTree
                     {
                         _internalNodeStack = SecureObjectPool<InternalNodeStack, Enumerator>.PrepNew(this, new InternalNodeStack());
                     }
+                    Debug.Assert(_internalNodeStack!.Use(ref this).Count == 0);
                     _internalNodeStack!.Use(ref this).Push((Unsafe.As<InternalEntry[]>(node), -1));
                 }
                 else

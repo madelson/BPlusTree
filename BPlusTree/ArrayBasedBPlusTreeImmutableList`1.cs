@@ -339,66 +339,73 @@ namespace BPlusTree
                 if (this.Count == 0) { return immutableList; }
                 if (immutableList.Count == 0) { return this; }
 
-                // todo we can further optimize this case by "stitching together"
-                // the two lists, preserving most existing nodes
+                return new(Concatenate(this._root, immutableList._root), this.Count + immutableList.Count);
             }
 
             using var enumerator = items.GetEnumerator();
 
             if (!enumerator.MoveNext()) { return this; }
 
+            // TODO is this right for non-compact this?
             const int MaxInternalLevels = 9;
             ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders = new(maxLength: MaxInternalLevels);
             ArrayBuilder<LeafEntry> leafBuilder = new(maxLength: MaxLeafNodeSize);
             PrePopulateBuilders(_root, ref internalBuilders, ref leafBuilder);
 
-            do
+            while (true)
             {
-                leafBuilder.Add(new() { Item = enumerator.Current });
-                CompleteNodes(ref internalBuilders, ref leafBuilder, force: false);
-            } while (enumerator.MoveNext());
-            CompleteNodes(ref internalBuilders, ref leafBuilder, force: true);
-
-            if (internalBuilders.Length > 0)
-            {
-                InternalEntry[] root = internalBuilders.Last.MoveToArray();
-                return new(root, root[root.Length - 1].CumulativeChildCount);
-            }
-
-            LeafEntry[] rootLeaf = leafBuilder.MoveToArray();
-            return new(rootLeaf, rootLeaf.Length);
-
-            static void CompleteNodes(
-                ref ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders, 
-                ref ArrayBuilder<LeafEntry> leafBuilder,
-                bool force)
-            {
-                var addedLeaf = false;
-                if (force ? (leafBuilder.Length > 0 && internalBuilders.Length > 0) : leafBuilder.Length == MaxLeafNodeSize)
+                while (leafBuilder.Length < MaxLeafNodeSize)
                 {
-                    if (internalBuilders.Length == 0) { internalBuilders.Add(new(maxLength: MaxInternalNodeSize)); }
-                    int cumulativeChildCount = internalBuilders[0].Length > 0 ? internalBuilders[0].Last.CumulativeChildCount + leafBuilder.Length : leafBuilder.Length;
-                    internalBuilders[0].Add(new() { CumulativeChildCount = cumulativeChildCount, Child = leafBuilder.MoveToArray() });
-                    addedLeaf = true;
-                }
-
-                if (force || addedLeaf)
-                {
-                    int topInternalLevel = internalBuilders.Length - 1;
-                    for (var i = 0; i <= topInternalLevel; ++i)
+                    leafBuilder.Add(new() { Item = enumerator.Current });
+                    if (!enumerator.MoveNext())
                     {
-                        ref ArrayBuilder<InternalEntry> internalBuilder = ref internalBuilders[i];
-                        if ((force && i != topInternalLevel) ? internalBuilder.Length > 0 : internalBuilder.Length == MaxInternalNodeSize)
-                        {
-                            if (i == topInternalLevel) { internalBuilders.Add(new(maxLength: MaxInternalNodeSize)); }
-                            int cumulativeChildCount = internalBuilders[i + 1].Length > 0 
-                                ? internalBuilders[i + 1].Last.CumulativeChildCount + internalBuilder.Last.CumulativeChildCount 
-                                : internalBuilder.Last.CumulativeChildCount;
-                            internalBuilders[i + 1].Add(new() { CumulativeChildCount = cumulativeChildCount, Child = internalBuilder.MoveToArray() });
-                        }
-                        else if (!force) { break; }
+                        goto Exhausted;
                     }
                 }
+                AddChild(ref internalBuilders, index: 0, leafBuilder.Length, leafBuilder.MoveToArray());
+            }
+            Exhausted: 
+            if (internalBuilders.Length == 0)
+            {
+                LeafEntry[] rootLeaf = leafBuilder.MoveToArray();
+                return new(rootLeaf, rootLeaf.Length);
+            }
+
+            AddChild(ref internalBuilders, index: 0, leafBuilder.Length, leafBuilder.MoveToArray());
+            for (var i = 0; i < internalBuilders.Length - 1; ++i)
+            {
+                ref ArrayBuilder<InternalEntry> internalBuilder = ref internalBuilders[i];
+                if (internalBuilder.Length > 0)
+                {
+                    AddChild(ref internalBuilders, index: i + 1, internalBuilder.Last.CumulativeChildCount, internalBuilder.MoveToArray());
+                }
+            }
+            InternalEntry[] root = internalBuilders.Last.MoveToArray();
+            return new(root, root[root.Length - 1].CumulativeChildCount);
+
+            static void AddChild(ref ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders, int index, int childCount, Array child)
+            {
+                int cumulativeChildCount;
+                if (index == internalBuilders.Length)
+                {
+                    internalBuilders.Add(new(maxLength: MaxInternalNodeSize));
+                    cumulativeChildCount = childCount;
+                }
+                else
+                {
+                    ref ArrayBuilder<InternalEntry> internalBuilder = ref internalBuilders[index];
+                    if (internalBuilder.Length == MaxInternalNodeSize)
+                    {
+                        AddChild(ref internalBuilders, index + 1, internalBuilder.Last.CumulativeChildCount, internalBuilder.MoveToArray());
+                        cumulativeChildCount = childCount;
+                    }
+                    else
+                    {
+                        cumulativeChildCount = internalBuilder.Length > 0 ? internalBuilder.Last.CumulativeChildCount + childCount : childCount;
+                    }
+                }
+
+                internalBuilders[index].Add(new() { CumulativeChildCount = cumulativeChildCount, Child = child });
             }
 
             static void PrePopulateBuilders(Array root, ref ArrayBuilder<ArrayBuilder<InternalEntry>> internalBuilders, ref ArrayBuilder<LeafEntry> leafBuilder)
@@ -450,12 +457,235 @@ namespace BPlusTree
             }
         }
 
+        private static Array Concatenate(Array leftRoot, Array rightRoot)
+        {
+            // TODO could switch to non-allocating stack
+            LeafEntry[] leftLeaf = GetPathToEdgeLeaf(leftRoot, isLeft: true, out Stack<InternalEntry[]> leftStack);
+            LeafEntry[] rightLeaf = GetPathToEdgeLeaf(rightRoot, isLeft: false, out Stack<InternalEntry[]> rightStack);
+
+            Array left = TryMergeLeaves(leftLeaf, rightLeaf, out Array? right);
+            while (leftStack.Count > 0 && rightStack.Count > 0)
+            {
+                InternalEntry[] leftParent = leftStack.Pop();
+                InternalEntry[] rightParent = rightStack.Pop();
+                // If the children are both unchanged and the left nodes satisfy the invariants, no-op.
+                // We don't need to check invariants on the right node because it will only be smaller than MIN if
+                // it is a leading edge and if it is a leading edge we're not altering that.
+                if (rightParent[0].Child == right && leftParent.Length >= MaxInternalNodeSize / 2)
+                {
+                    left = leftParent;
+                    right = rightParent;
+                }
+                else
+                {
+                    int adjustedRightParentLength = right is null ? rightParent.Length - 1 : rightParent.Length;
+                    // case 1: update nodes individually
+                    if (leftParent.Length >= MaxInternalNodeSize / 2 && adjustedRightParentLength >= MaxInternalNodeSize / 2)
+                    {
+                        InternalEntry[] updatedLeftParent = leftParent.Copy();
+                        updatedLeftParent[leftParent.Length - 1] = new() { Child = left, CumulativeChildCount = leftParent[leftParent.Length - 2].CumulativeChildCount + GetCount(left) };
+                        InternalEntry[] updatedRightParent = rightParent.AsSpan(rightParent.Length - adjustedRightParentLength).ToArray();
+                        if (right != null)
+                        {
+                            updatedRightParent[0].Child = right;
+                        }
+                        SetCumulativeChildCounts(updatedRightParent);
+                        left = updatedLeftParent;
+                        right = updatedRightParent;
+                    }
+                    // case 2: merge nodes
+                    else if (leftParent.Length + adjustedRightParentLength <= MaxInternalNodeSize)
+                    {
+                        var merged = new InternalEntry[leftParent.Length + adjustedRightParentLength];
+                        leftParent.AsSpan(0, leftParent.Length - 1).CopyTo(merged);
+                        merged[leftParent.Length - 1].Child = left;
+                        if (right != null)
+                        {
+                            merged[leftParent.Length].Child = right;
+                        }
+                        rightParent.AsSpan(rightParent.Length - adjustedRightParentLength + 1).CopyTo(merged.AsSpan(merged.Length - adjustedRightParentLength + 1));
+                        SetCumulativeChildCounts(merged);
+                        left = merged;
+                        right = null;
+                    }
+                    // case 3: rebalance nodes
+                    else
+                    {
+                        Rebalance(
+                            leftParent, 
+                            rightParent.AsSpan(rightParent.Length - adjustedRightParentLength), 
+                            out InternalEntry[] updatedLeftParent, 
+                            out InternalEntry[] updatedRightParent);
+                        if (leftParent.Length - 1 < updatedLeftParent.Length)
+                        {
+                            updatedLeftParent[leftParent.Length - 1].Child = left;
+                        }
+                        else
+                        {
+                            updatedRightParent[leftParent.Length - 1 - updatedLeftParent.Length].Child = left;
+                        }
+                        if (right != null)
+                        {
+                            if (leftParent.Length < updatedLeftParent.Length)
+                            {
+                                updatedLeftParent[leftParent.Length].Child = right;
+                            }
+                            else
+                            {
+                                updatedRightParent[leftParent.Length - updatedLeftParent.Length].Child = right;
+                            }
+                        }
+                        SetCumulativeChildCounts(updatedLeftParent);
+                        SetCumulativeChildCounts(updatedRightParent);
+                        left = updatedLeftParent;
+                        right = updatedRightParent;
+                    }
+                }
+            }
+
+            if (leftStack.Count > 0)
+            {
+                do
+                {
+                    InternalEntry[] leftParent = leftStack.Pop();
+                    InternalEntry[] updatedLeftParent;
+                    InternalEntry[]? updatedRightParent;
+                    if (right is null)
+                    {
+                        // TODO repeated
+                        updatedLeftParent = leftParent.Copy();
+                        updatedLeftParent[leftParent.Length - 1] = new() { Child = left, CumulativeChildCount = leftParent[leftParent.Length - 2].CumulativeChildCount + GetCount(left) };
+                        updatedRightParent = null;
+                    }
+                    else if (leftParent.Length < MaxInternalNodeSize)
+                    {
+                        updatedLeftParent = new InternalEntry[leftParent.Length + 1];
+                        leftParent.AsSpan().CopyTo(updatedLeftParent);
+                        int leftCumulativeChildCount = (leftParent.Length > 1 ? leftParent[leftParent.Length - 2].CumulativeChildCount : 0) + GetCount(left);
+                        updatedLeftParent[leftParent.Length - 1] = new() { Child = left, CumulativeChildCount = leftCumulativeChildCount };
+                        updatedLeftParent[leftParent.Length] = new() { Child = right, CumulativeChildCount = leftCumulativeChildCount + GetCount(right) };
+                        updatedRightParent = null;
+                    }
+                    else
+                    {
+                        // TODO repeated
+                        updatedLeftParent = leftParent.Copy();
+                        updatedLeftParent[leftParent.Length - 1] = new() { Child = left, CumulativeChildCount = leftParent[leftParent.Length - 2].CumulativeChildCount + GetCount(left) };
+                        updatedRightParent = null;
+                        // left-leaning split
+                        updatedRightParent = new InternalEntry[] { new() { Child = right, CumulativeChildCount = GetCount(right) } };
+                    }
+                    left = updatedLeftParent;
+                    right = updatedRightParent;
+                }
+                while (leftStack.Count > 0);
+            }
+            else
+            {
+                while (rightStack.Count > 0)
+                {
+                    InternalEntry[] rightParent = rightStack.Pop();
+                    InternalEntry[] updatedLeftParent;
+                    InternalEntry[]? updatedRightParent;
+                    if (right is null)
+                    {
+                        // TODO repeated
+                        updatedLeftParent = rightParent.Copy();
+                        updatedLeftParent[0].Child = left;
+                        SetCumulativeChildCounts(updatedLeftParent);
+                        updatedRightParent = null;
+                    }
+                    else if (rightParent.Length < MaxInternalNodeSize)
+                    {
+                        updatedLeftParent = new InternalEntry[rightParent.Length + 1];
+                        rightParent.AsSpan().CopyTo(updatedLeftParent.AsSpan(1));
+                        updatedLeftParent[0].Child = left;
+                        updatedLeftParent[1].Child = right;
+                        SetCumulativeChildCounts(updatedLeftParent);
+                        updatedRightParent = null;
+                    }
+                    else
+                    {
+                        InternalEntry leftEntry = new() { Child = left };
+                        Rebalance(Helpers.CreateReadOnlySpan(ref leftEntry), rightParent, out updatedLeftParent, out updatedRightParent);
+                        updatedLeftParent[1].Child = right;
+                        SetCumulativeChildCounts(updatedLeftParent);
+                        SetCumulativeChildCounts(updatedRightParent);
+                    }
+                    left = updatedLeftParent;
+                    right = updatedRightParent;
+                };
+            }
+
+            Debug.Assert(GetCount(left) + (right is null ? 0 : GetCount(right)) == GetCount(leftRoot) + GetCount(rightRoot));
+            if (right is null)
+            {
+                return left;
+            }
+
+            var mergedRoot = new InternalEntry[] { new() { Child = left }, new() { Child = right } };
+            SetCumulativeChildCounts(mergedRoot);
+            return mergedRoot;
+
+            static LeafEntry[] GetPathToEdgeLeaf(Array root, bool isLeft, out Stack<InternalEntry[]> stack)
+            {
+                stack = new();
+                Array current = root;
+                while (current.GetType() == typeof(InternalEntry[]))
+                {
+                    InternalEntry[] internalCurrent = Unsafe.As<InternalEntry[]>(current);
+                    stack.Push(internalCurrent);
+                    current = internalCurrent[isLeft ? internalCurrent.Length - 1 : 0].Child;
+                }
+                return Unsafe.As<LeafEntry[]>(current);
+            }
+
+            static LeafEntry[] TryMergeLeaves(LeafEntry[] left, LeafEntry[] right, out Array? unmerged)
+            {
+                // case 1: both can be left alone
+                if (left.Length >= MaxLeafNodeSize / 2 && right.Length >= MaxLeafNodeSize / 2)
+                {
+                    unmerged = right;
+                    return left;
+                }
+
+                // case 2: merge into single node
+                int totalLength = left.Length + right.Length;
+                if (totalLength < MaxLeafNodeSize)
+                {
+                    var merged = new LeafEntry[totalLength];
+                    left.AsSpan().CopyTo(merged);
+                    right.AsSpan().CopyTo(merged.AsSpan(left.Length));
+                    unmerged = null;
+                    return merged;
+                }
+
+                // case 3: rebalance
+                Rebalance(left, right, out LeafEntry[] updatedLeft, out LeafEntry[] updatedRight);
+                unmerged = updatedRight;
+                return updatedLeft;
+            }
+
+            static void Rebalance<E>(ReadOnlySpan<E> left, ReadOnlySpan<E> right, out E[] updatedLeft, out E[] updatedRight)
+            {
+                int totalLength = left.Length + right.Length;
+                updatedRight = new E[totalLength / 2];
+                updatedLeft = new E[totalLength - updatedRight.Length];
+                for (var i = 0; i < totalLength; ++i)
+                {
+                    ref readonly E source = ref (i < left.Length ? ref left[i] : ref right[i - left.Length]);
+                    ref E destination = ref (i < updatedLeft.Length ? ref updatedLeft[i] : ref updatedRight[i - updatedLeft.Length]);
+                    destination = source;
+                }
+            }
+        }
+
         public ArrayBasedBPlusTreeImmutableList<T> Clear() => Empty;
 
         /// <summary>
         /// See the <see cref="IImmutableList{T}"/> interface.
         /// </summary>
-        public ArrayBasedBPlusTreeImmutableList<T> Remove(T value) => this.Remove(value, equalityComparer: null);
+        public ArrayBasedBPlusTreeImmutableList<T> Remove(T value) => Remove(value, equalityComparer: null);
 
         /// <summary>
         /// See the <see cref="IImmutableList{T}"/> interface.
@@ -465,7 +695,7 @@ namespace BPlusTree
             int index = IndexOf(value, index: 0, _count, equalityComparer);
             return index < 0 ? this : RemoveAt(index);
         }
-
+ 
         public ArrayBasedBPlusTreeImmutableList<T> RemoveAll(Predicate<T> match)
         {
             if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
@@ -525,7 +755,7 @@ namespace BPlusTree
             return new(updated, _count - count);
         }
 
-        public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(IEnumerable<T> items) => this.RemoveRange(items, equalityComparer: null);
+        public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(IEnumerable<T> items) => RemoveRange(items, equalityComparer: null);
 
         public ArrayBasedBPlusTreeImmutableList<T> RemoveRange(IEnumerable<T> items, IEqualityComparer<T>? equalityComparer)
         {
@@ -558,6 +788,9 @@ namespace BPlusTree
             return builder?.ToImmutable() ?? this;
         }
 
+        // TODO: need to "split" the tree around the span to be removed, then stitch it back together
+        // so that we can fix up sizes. But how do we handle splitting off the RHS while maintaining invariants?
+        // Key is that when merging 2 nodes the merge has to be recursive along the "fault line"
         private static Array RemoveRange(Array node, int index, int count, bool isLeadingEdge)
         {
             Debug.Assert(index + count <= GetCount(node));
@@ -607,7 +840,7 @@ namespace BPlusTree
                     afterHigh = high < internalNode.Length - 1 ? internalNode[high + 1].Child : null;
                 if (updatedLow != null || updatedHigh != null)
                 {
-                    var isAfterHighLeadingEdge = high + 2 >= internalNode.Length;
+                    var isAfterHighLeadingEdge = isLeadingEdge && high + 2 >= internalNode.Length;
                     RestoreNodeSizeInvariants(ref beforeLow, ref updatedLow, ref updatedHigh, ref afterHigh, isAfterHighLeadingEdge);
                 }
 
@@ -632,6 +865,7 @@ namespace BPlusTree
                     updated[i].Child = internalNode[i + (internalNode.Length - updated.Length)].Child;
                 }
                 SetCumulativeChildCounts(updated);
+
                 return updated;
             }
             else
@@ -649,17 +883,24 @@ namespace BPlusTree
             Debug.Assert(b != null || c != null);
 
             bool isInternal = (b ?? c)!.GetType() == typeof(InternalEntry[]);
-            MergeLeft(ref c, ref d, ref isLeadingEdge, isInternal);
-            MergeLeft(ref b, ref c, ref isLeadingEdge, isInternal);
-            MergeLeft(ref a, ref b, ref isLeadingEdge, isInternal);
+            bool isMergingLeadingEdge = isLeadingEdge;
+            MergeLeft(ref c, ref d, ref isMergingLeadingEdge, isInternal);
+            MergeLeft(ref b, ref c, ref isMergingLeadingEdge, isInternal);
+            MergeLeft(ref a, ref b, ref isMergingLeadingEdge, isInternal);
 
             Debug.Assert(a != null);
+            Debug.Assert(
+                new[] { a, b, c, d }.Where(n => n != null)
+                    .Reverse()
+                    .Skip(isLeadingEdge ? 1 : 0)
+                    .All(n => n!.Length >= (isInternal ? MaxInternalNodeSize : MaxLeafNodeSize) / 2)
+            );
 
             static void MergeLeft(ref Array? a, ref Array? b, ref bool isLeadingEdge, bool isInternal)
             {
                 if (b is null) 
                 { 
-                    return; 
+                    return;
                 }
                 if (a is null) 
                 { 
@@ -798,7 +1039,7 @@ namespace BPlusTree
                 if (node.GetType() == typeof(InternalEntry[]))
                 {
                     InternalEntry[] clonedNode = Unsafe.As<InternalEntry[]>(node).Copy();
-                    
+
                     // identify the range of affected indices
                     var low = 0;
                     while (clonedNode[low].CumulativeChildCount <= index)
@@ -811,9 +1052,8 @@ namespace BPlusTree
                         ++high;
                     }
 
-                    var remainingCount = count;
                     for (var i = low; i <= high; ++i)
-                    { 
+                    {
                         int previousCumulativeChildCount = i == 0 ? 0 : clonedNode[i - 1].CumulativeChildCount;
                         int childIndex = i == low ? index - previousCumulativeChildCount : 0;
                         int childCount = (i == high ? count + index : clonedNode[i].CumulativeChildCount) - previousCumulativeChildCount - childIndex;
@@ -824,6 +1064,64 @@ namespace BPlusTree
                 }
 
                 return Unsafe.As<LeafEntry[]>(node).Copy();
+            }
+        }
+
+        public ArrayBasedBPlusTreeImmutableList<T> Sort() => Sort(default(IComparer<T>));
+
+        public ArrayBasedBPlusTreeImmutableList<T> Sort(Comparison<T> comparison)
+        {
+            if (comparison is null) { ThrowHelper.ThrowArgumentNull(nameof(comparison)); }
+            return Sort(Comparer<T>.Create(comparison));
+        }
+
+        public ArrayBasedBPlusTreeImmutableList<T> Sort(IComparer<T>? comparer) => Sort(0, _count, comparer);
+
+        public ArrayBasedBPlusTreeImmutableList<T> Sort(int index, int count, IComparer<T>? comparer)
+        {
+            if ((uint)index > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            if (count < 0 || (uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+
+            if (count <= 1) { return this; }
+
+            var array = new T[count];
+            this.CopyTo(index, array, arrayIndex: 0, count);
+            Array.Sort(array, comparer);
+
+            var arrayIndex = 0;
+            return new(SetRangeFromArray(_root, index, count, array, ref arrayIndex), _count);
+
+            static Array SetRangeFromArray(Array node, int index, int count, T[] array, ref int arrayIndex)
+            {
+                Debug.Assert(index + count <= GetCount(node));
+                Debug.Assert(count != 0 && count <= GetCount(node));
+
+                if (node.GetType() == typeof(InternalEntry[]))
+                {
+                    InternalEntry[] updatedInternalNode = Unsafe.As<InternalEntry[]>(node).Copy();
+                    int childIndex = 0;
+                    while (updatedInternalNode[childIndex].CumulativeChildCount <= index)
+                    {
+                        ++childIndex;
+                    }
+
+                    do
+                    {
+                        MapStartIndexAndCountToChild(updatedInternalNode, childIndex, index, count, out int childStartIndex, out int childCount);
+                        updatedInternalNode[childIndex].Child = SetRangeFromArray(updatedInternalNode[childIndex].Child, childStartIndex, childCount, array, ref arrayIndex);
+                    } while (updatedInternalNode[childIndex].CumulativeChildCount < index + count && ++childIndex < updatedInternalNode.Length);
+
+                    return updatedInternalNode;
+                }
+
+                LeafEntry[] updatedLeafNode = count < node.Length
+                    ? Unsafe.As<LeafEntry[]>(node).Copy()
+                    : new LeafEntry[node.Length];
+                for (int i = index; i < index + count; ++i)
+                {
+                    updatedLeafNode[i].Item = array[arrayIndex++];
+                }
+                return updatedLeafNode;
             }
         }
 
@@ -900,28 +1198,38 @@ namespace BPlusTree
         [Conditional("DEBUG")]
         private void AssertValid()
         {
-            AssertValid(_root, isLeadingEdge: true);
+            AssertValid(_root, NodeType.Root);
             Debug.Assert(Count == GetCount(_root));
         }
 
+        private enum NodeType { Root, LeadingEdge, Normal }
+
         [Conditional("DEBUG")]
-        private static void AssertValid(Array node, bool isLeadingEdge)
+        private static void AssertValid(Array node, NodeType nodeType)
         {
             if (node is LeafEntry[] leafNode)
             {
+                Debug.Assert(nodeType != NodeType.Normal || leafNode.Length >= MaxLeafNodeSize / 2);
                 Debug.Assert(leafNode.Length <= MaxLeafNodeSize);
                 return;
             }
 
             var internalNode = (InternalEntry[])node;
-            Debug.Assert(internalNode.Length >= (isLeadingEdge ? 1 : (MaxInternalNodeSize / 2)));
+            int minNodeLength = nodeType switch
+            {
+                NodeType.Root => 2,
+                NodeType.LeadingEdge => 1,
+                NodeType.Normal => MaxInternalNodeSize / 2,
+                _ => throw new ArgumentException(nameof(nodeType))
+            };
+            Debug.Assert(internalNode.Length >= minNodeLength);
             Debug.Assert(internalNode.Length <= MaxInternalNodeSize);
             Type childType = internalNode[0].Child.GetType();
             for (var i = 0; i < internalNode.Length; ++i)
             {
                 Debug.Assert(!internalNode[i].IsChildMutable);
                 Debug.Assert(internalNode[i].Child.GetType() == childType);
-                AssertValid(internalNode[i].Child, isLeadingEdge: i == internalNode.Length - 1);
+                AssertValid(internalNode[i].Child, i == internalNode.Length - 1 ? NodeType.LeadingEdge : NodeType.Normal);
                 Debug.Assert(internalNode[i].CumulativeChildCount - (i > 0 ? internalNode[i - 1].CumulativeChildCount : 0) == GetCount(internalNode[i].Child));
             }
         }
@@ -929,38 +1237,63 @@ namespace BPlusTree
         private delegate bool Scanner<TState>(ReadOnlySpan<T> items, ref TState state);
 
         // todo we could incorporate count as well as startIndex here
-        private static bool ScanForward<TState>(Array node, Scanner<TState> scanner, int startIndex, ref TState state)
+        private static bool ScanForward<TState>(Array node, Scanner<TState> scanner, int startIndex, int count, ref TState state)
         {
+            Debug.Assert(startIndex >= 0 && startIndex < GetCount(node));
+            Debug.Assert(count > 0 && startIndex + count <= GetCount(node));
+
             if (node.GetType() == typeof(InternalEntry[]))
             {
                 InternalEntry[] internalNode = Unsafe.As<InternalEntry[]>(node);
+
                 var childIndex = 0;
-                if (startIndex != 0)
-                {
-                    while (internalNode[childIndex].CumulativeChildCount <= startIndex) { ++childIndex; }
-                    if (ScanForward(
-                        internalNode[childIndex].Child, 
-                        scanner, 
-                        startIndex: childIndex == 0 ? startIndex : startIndex - internalNode[childIndex - 1].CumulativeChildCount, 
-                        ref state))
-                    {
-                        return true;
-                    }
-                    ++childIndex;
-                }
+                while (internalNode[childIndex].CumulativeChildCount <= startIndex) { ++childIndex; }
 
-                while (childIndex < internalNode.Length)
+                do
                 {
-                    if (ScanForward(internalNode[childIndex++].Child, scanner, startIndex: 0, ref state))
+                    MapStartIndexAndCountToChild(internalNode, childIndex, startIndex, count, out int childStartIndex, out int childCount);
+                    if (childCount <= 0) 
+                    { 
+                        return false; 
+                    }
+
+                    if (ScanForward(internalNode[childIndex].Child, scanner, childStartIndex, childCount, ref state))
                     {
                         return true;
                     }
                 }
-
+                while (++childIndex < internalNode.Length);
+                
                 return false;
             }
                 
-            return scanner(new ReadOnlySpan<T>(Unsafe.As<T[]>(node)).Slice(startIndex), ref state);
+            return scanner(new ReadOnlySpan<T>(Unsafe.As<T[]>(node), startIndex, count), ref state);
+        }
+
+        private static void MapStartIndexAndCountToChild(InternalEntry[] node, int childIndex, int startIndex, int count, out int childStartIndex, out int childCount)
+        {
+            if (childIndex == 0)
+            {
+                childStartIndex = startIndex;
+                childCount = Math.Min(count, node[childIndex].CumulativeChildCount - startIndex);
+            }
+            else
+            {
+                int childOffset = node[childIndex - 1].CumulativeChildCount;
+                if (childOffset >= startIndex)
+                {
+                    childStartIndex = 0;
+                    childCount = Math.Min(startIndex + count, node[childIndex].CumulativeChildCount) - childOffset;
+                }
+                else
+                {
+                    childStartIndex = startIndex - childOffset;
+                    childCount = Math.Min(count, node[childIndex].CumulativeChildCount - childStartIndex - childOffset);
+                }
+            }
+
+            Debug.Assert(childStartIndex >= 0 && childStartIndex < GetCount(node[childIndex].Child));
+            Debug.Assert(childCount <= GetCount(node[childIndex].Child));
         }
 
         IImmutableList<T> IImmutableList<T>.Add(T value) => Add(value);
@@ -974,9 +1307,9 @@ namespace BPlusTree
             if (count < 0) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
             if ((uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(index)} + {nameof(count)}"); }
 
-            var state = (Remaining: count, item, equalityComparer ?? EqualityComparer<T>.Default);
-            return ScanForward(_root, IndexOfDelegate.Instance, index, ref state)
-                ? (state.Remaining < 0 ? -1 : index + (count - state.Remaining))
+            var state = (Index: index, item, equalityComparer ?? EqualityComparer<T>.Default);
+            return ScanForward(_root, IndexOfDelegate.Instance, index, count, ref state)
+                ? state.Index
                 : -1;
         }
 
@@ -1015,15 +1348,23 @@ namespace BPlusTree
 
         public bool Contains(T item) => IndexOf(item) >= 0;
 
-        public void CopyTo(T[] array, int arrayIndex)
+        public void CopyTo(T[] array) => CopyTo(array, 0);
+
+        public void CopyTo(T[] array, int arrayIndex) => CopyTo(0, array, arrayIndex, _count);
+
+        public void CopyTo(int index, T[] array, int arrayIndex, int count)
         {
+            if ((uint)index >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(); }
+            if (count < 0) { ThrowHelper.ThrowArgumentOutOfRange(nameof(count)); }
+            if ((uint)index + (uint)count > (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange($"{nameof(index)} + {nameof(count)}"); }
+
             if (array is null) { ThrowHelper.ThrowArgumentNull(nameof(array)); }
-            if ((uint)arrayIndex >= (uint)_count) { ThrowHelper.ThrowArgumentOutOfRange(nameof(arrayIndex)); }
+            if ((uint)arrayIndex >= (uint)array.Length) { ThrowHelper.ThrowArgumentOutOfRange(nameof(arrayIndex)); }
             // todo different error for this case probably
-            if (arrayIndex + _count > array.Length) { ThrowHelper.ThrowArgumentOutOfRange(nameof(array)); }
+            if (arrayIndex + count > array.Length) { ThrowHelper.ThrowArgumentOutOfRange(nameof(array)); }
 
             var state = (array, arrayIndex);
-            ScanForward(_root, CopyToDelegte.Instance, startIndex: 0, ref state);
+            ScanForward(_root, CopyToDelegte.Instance, startIndex: index, count, ref state);
         }
 
         bool ICollection<T>.Remove(T item) => throw new NotSupportedException();
@@ -1039,14 +1380,7 @@ namespace BPlusTree
         {
             if (action is null) { ThrowHelper.ThrowArgumentNull(nameof(action)); }
 
-            ScanForward(_root, ForEachDelegate.Instance, startIndex: 0, ref action);
-        }
-
-        public void CopyTo(T[] array) => CopyTo(array, 0);
-
-        public void CopyTo(int index, T[] array, int arrayIndex, int count)
-        {
-            throw new NotImplementedException();
+            ScanForward(_root, ForEachDelegate.Instance, startIndex: 0, _count, ref action);
         }
 
         public bool Exists(Predicate<T> match) => FindIndex(match) >= 0;
@@ -1079,9 +1413,8 @@ namespace BPlusTree
         {
             if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
 
-            // TODO revisit naming of Count
-            var state = (Predicate: match, Count: count + startIndex, FoundIndex: startIndex, FoundItem: default(T));
-            bool result = ScanForward(_root, FindDelegate.Instance, startIndex, ref state);
+            var state = (Predicate: match, FoundIndex: startIndex, FoundItem: default(T));
+            bool result = ScanForward(_root, FindDelegate.Instance, startIndex, count, ref state);
             foundIndex = state.FoundIndex;
             foundItem = state.FoundItem;
             return result;
@@ -1111,7 +1444,7 @@ namespace BPlusTree
         {
             if (match is null) { ThrowHelper.ThrowArgumentNull(nameof(match)); }
 
-            return !ScanForward(_root, TrueForAllDelegate.Instance, startIndex: 0, ref match);
+            return !ScanForward(_root, TrueForAllDelegate.Instance, startIndex: 0, _count, ref match);
         }
 
         public int BinarySearch(T item)

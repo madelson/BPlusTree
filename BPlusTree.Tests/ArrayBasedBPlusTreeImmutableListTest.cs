@@ -116,12 +116,13 @@ namespace BPlusTree.Tests
         [Test, Combinatorial]
         public void TestAddRange(
             [Values(1, 7, 49, 123, 10000)] int startCount,
-            [Values(1, 7, 49, 123, 10000)] int addCount)
+            [Values(1, 7, 49, 123, 10000)] int addCount,
+            [Values] bool addAsBPlusTree)
         {
             string[] startingValues = Enumerable.Range(0, startCount).Select(i => $"s{i}").ToArray();
             string[] addedValues = Enumerable.Range(0, addCount).Select(i => $"a{i}").ToArray();
             ArrayBasedBPlusTreeImmutableList<string> list = ArrayBasedBPlusTreeImmutableList.CreateRange(startingValues);
-            list = list.AddRange(addedValues);
+            list = list.AddRange(addAsBPlusTree ? ArrayBasedBPlusTreeImmutableList.CreateRange(addedValues) : addedValues);
             CollectionAssert.AreEqual(startingValues.Concat(addedValues), list);
         }
 
@@ -208,7 +209,8 @@ namespace BPlusTree.Tests
 
             foreach (var index in removes)
             {
-                list = list.RemoveAt(index);
+                try { list = list.RemoveAt(index); }
+                catch { list = list.RemoveAt(index); }
             }
 
             Assert.AreSame(ArrayBasedBPlusTreeImmutableList<int>.Empty, list);
@@ -248,6 +250,30 @@ namespace BPlusTree.Tests
             var array = list.ToArray();
             Array.Reverse(array, 37, 153);
             CollectionAssert.AreEqual(array, list.Reverse(37, 153));
+        }
+
+        [Test]
+        public void TestSort()
+        {
+            var list = ArrayBasedBPlusTreeImmutableList.CreateRange(Enumerable.Range(0, 300).Reverse());
+            var sorted = list.Sort();
+            CollectionAssert.AreEqual(Enumerable.Range(0, 300), sorted);
+
+            sorted = list.Sort(150, 0, comparer: null);
+            Assert.AreSame(list, sorted);
+            sorted = list.Sort(120, 1, comparer: null);
+            Assert.AreSame(list, sorted);
+
+            sorted = list.Sort(100, 100, comparer: null);
+            CollectionAssert.AreEqual(
+                list.Take(100)
+                    .Concat(list.Skip(100).Take(100).OrderBy(i => i))
+                    .Concat(list.Skip(200)),
+                sorted
+            );
+
+            sorted = list.Sort((a, b) => a.ToString().CompareTo(b.ToString()));
+            CollectionAssert.AreEqual(list.OrderBy(i => i.ToString()), sorted);
         }
 
         [Test]

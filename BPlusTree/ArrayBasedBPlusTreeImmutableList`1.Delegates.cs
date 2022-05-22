@@ -10,28 +10,20 @@ namespace BPlusTree
     {
         private static class IndexOfDelegate
         {
-            public static readonly Scanner<(int Remaining, T Item, IEqualityComparer<T> Comparer)> Instance = IndexOfHelper;
+            public static readonly Scanner<(int Index, T Item, IEqualityComparer<T> Comparer)> Instance = IndexOfHelper;
 
-            private static bool IndexOfHelper(ReadOnlySpan<T> items, ref (int Remaining, T Item, IEqualityComparer<T> Comparer) state)
+            private static bool IndexOfHelper(ReadOnlySpan<T> items, ref (int Index, T Item, IEqualityComparer<T> Comparer) state)
             {
                 for (var i = 0; i < items.Length; i++)
                 {
-                    if (i >= state.Remaining)
-                    {
-                        break;
-                    }
                     if (state.Comparer.Equals(items[i], state.Item))
                     {
-                        state.Remaining -= i;
+                        state.Index += i;
                         return true; // break
                     }
                 }
 
-                if ((state.Remaining -= items.Length) <= 0)
-                {
-                    state.Remaining = -1;
-                    return true; // break
-                }
+                state.Index += items.Length;
                 return false; // continue
             }
         }
@@ -50,16 +42,10 @@ namespace BPlusTree
 
         private static class FindDelegate
         {
-            public static readonly Scanner<(Predicate<T> Predicate, int Count, int FoundIndex, T? FoundItem)> Instance = FindHelper;
+            public static readonly Scanner<(Predicate<T> Predicate, int FoundIndex, T? FoundItem)> Instance = FindHelper;
 
-            private static bool FindHelper(ReadOnlySpan<T> items, ref (Predicate<T> Predicate, int Count, int FoundIndex, T? FoundItem) state)
+            private static bool FindHelper(ReadOnlySpan<T> items, ref (Predicate<T> Predicate, int FoundIndex, T? FoundItem) state)
             {
-                int count = state.Count - state.FoundIndex;
-                if (count < items.Length)
-                {
-                    items = items.Slice(0, count);
-                }
-
                 for (var i = 0; i < items.Length; ++i)
                 {
                     if (state.Predicate(items[i]))
