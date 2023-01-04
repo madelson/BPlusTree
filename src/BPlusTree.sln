@@ -5,7 +5,9 @@ VisualStudioVersion = 17.4.33103.184
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BPlusTree", "BPlusTree\BPlusTree.csproj", "{3E32DF4A-04E2-443E-9DF3-D6F44BD93012}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BPlusTree.Tests", "BPlusTree.Tests\BPlusTree.Tests.csproj", "{460F0F3F-F7C9-40EA-A16B-33979E978FA6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BPlusTree.Tests", "BPlusTree.Tests\BPlusTree.Tests.csproj", "{460F0F3F-F7C9-40EA-A16B-33979E978FA6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BPlusTree.Benchmarks", "BPlusTree.Benchmarks\BPlusTree.Benchmarks.csproj", "{0D3F2051-090C-4A1E-9392-0C6855DC8973}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{460F0F3F-F7C9-40EA-A16B-33979E978FA6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{460F0F3F-F7C9-40EA-A16B-33979E978FA6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{460F0F3F-F7C9-40EA-A16B-33979E978FA6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D3F2051-090C-4A1E-9392-0C6855DC8973}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D3F2051-090C-4A1E-9392-0C6855DC8973}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D3F2051-090C-4A1E-9392-0C6855DC8973}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D3F2051-090C-4A1E-9392-0C6855DC8973}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Medallion.Collections.Benchmarks</RootNamespace>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\BPlusTree\BPlusTree.csproj" />
+    <PackageReference Include="BenchmarkDotNet" Version="0.13.3" />
+
+    <Using Include="System.Collections.Immutable" />
+    <Using Include="BenchmarkDotNet.Attributes" />
+  </ItemGroup>
+
+</Project>
